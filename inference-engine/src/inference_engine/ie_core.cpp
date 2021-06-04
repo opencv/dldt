@@ -485,6 +485,12 @@ public:
         return details::ReadNetwork(model, weights, extensions);
     }
 
+    CNNNetwork ReadNetwork(const std::string& model, const Blob::CPtr& weights, const std::vector<IExtensionPtr>& exts) const override {
+        OV_ITT_SCOPE(FIRST_INFERENCE, itt::domains::IE_RT, "Core::Impl::ReadNetwork from memory with extensions");
+        return details::ReadNetwork(model, weights, exts);
+    }
+
+
     // TODO: In future this method can be added to ICore interface
     SoExecutableNetworkInternal LoadNetwork(const CNNNetwork& network, const RemoteContext::Ptr& context,
                                             const std::map<std::string, std::string>& config) {

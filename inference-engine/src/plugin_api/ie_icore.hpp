@@ -52,6 +52,15 @@ public:
     virtual CNNNetwork ReadNetwork(const std::string& modelPath, const std::string& binPath) const = 0;
 
     /**
+     * @brief Reads IR xml and bin (with the same name) files
+     * @param model string with IR
+     * @param weights shared pointer to constant blob with weights
+     * @param extensions extensions list
+     * @return CNNNetwork
+     */
+    virtual CNNNetwork ReadNetwork(const std::string& model, const Blob::CPtr& weights, const std::vector<IExtensionPtr>& extensions) const = 0;
+
+    /**
      * @brief Creates an executable network from a network object.
      *
      * Users can create as many networks as they need and use

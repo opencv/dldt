@@ -73,7 +73,9 @@ std::vector<std::string> disabledTestPatterns() {
         // TODO: 57562 No dynamic output shape support
         R"(.*NonZeroLayerTest.*)",
         // need to implement Export / Import
-        R"(.*IEClassImportExportTestP.*)"
+        R"(.*IEClassImportExportTestP.*)",
+        // Issue: 53914. Disabled the reduce to pooling transformation
+        R"(.*smoke_LPT.*Reduce.*Transformation.*)",
     };
 #ifdef __APPLE__
         // TODO: Issue 55717

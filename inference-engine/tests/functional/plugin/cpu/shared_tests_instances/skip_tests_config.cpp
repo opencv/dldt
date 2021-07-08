@@ -73,7 +73,28 @@ std::vector<std::string> disabledTestPatterns() {
         // TODO: 57562 No dynamic output shape support
         R"(.*NonZeroLayerTest.*)",
         // need to implement Export / Import
-        R"(.*IEClassImportExportTestP.*)"
+        R"(.*IEClassImportExportTestP.*)",
+
+
+        // INVESTIGATE
+        // R"(.*FakeQuantizeLayerTest.*)",
+        // R"(.*StaticShapeLoopTest.*)",
+        // R"(.*TrivialLoopTest.*)",
+        // R"(.*TransposeLayerTest.*)",
+        // R"(.*TransposeLayerCPUTest.*)",
+        // R"(.*FuseTransposeAndReorderTest.*)",
+        //
+        // R"(.*TensorIteratorTest.*)", +
+        // R"(.*FuseScaleShiftAndFakeQuantizeTest.*)",
+        // R"(.*OnnxModelWithCustomAbs.*)",
+        // R"(.*XmlModelWithCustomAbs.*)",
+        // R"(.*Gather_x2_add_mul_relu_concat_matmul.*)", +
+        // R"(.*SetMean.*)",
+        // R"(.*SetScale.*)",
+        // R"(.*smoke_LPT.*)",
+        // R"(.*GRUSequenceCPUTest.*)", // reorder BF16
+        // R"(.*LSTMSequenceCPUTest.*)", // reorder BF16
+        // R"(.*RNNSequenceCPUTest.*)" // reorder BF16
     };
 #ifdef __APPLE__
         // TODO: Issue 55717

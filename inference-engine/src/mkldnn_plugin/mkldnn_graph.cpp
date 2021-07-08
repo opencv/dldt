@@ -328,7 +328,6 @@ void MKLDNNGraph::InitGraph() {
 
     InitEdges();
 
-    // TODO [DS]: Uncomment
     optimizer.ApplyImplSpecificGraphOptimizations(*this);
     SortTopologically();
 
@@ -1192,7 +1191,7 @@ InferenceEngine::CNNNetwork MKLDNNGraph::dump() const {
 }
 
 InferenceEngine::Blob::Ptr MKLDNNGraph::convertMemToBlob(const MKLDNNMemory &mem) const {
-    // TODO [mkutakov]: Rewrite when IE is moved to the new TensorDescriptor
+    // TODO [DS]: Rewrite when IE is moved to the new TensorDescriptor
     auto& memDesc = mem.GetDesc();
     InferenceEngine::TensorDesc desc = MemoryDescUtils::convertToTensorDesc(memDesc);
 

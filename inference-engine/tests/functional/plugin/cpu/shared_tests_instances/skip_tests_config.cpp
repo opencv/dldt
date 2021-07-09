@@ -77,24 +77,14 @@ std::vector<std::string> disabledTestPatterns() {
 
 
         // INVESTIGATE
-        // R"(.*FakeQuantizeLayerTest.*)",
-        // R"(.*StaticShapeLoopTest.*)",
-        // R"(.*TrivialLoopTest.*)",
-        // R"(.*TransposeLayerTest.*)",
-        // R"(.*TransposeLayerCPUTest.*)",
-        // R"(.*FuseTransposeAndReorderTest.*)",
-        //
-        // R"(.*TensorIteratorTest.*)", +
-        // R"(.*FuseScaleShiftAndFakeQuantizeTest.*)",
-        // R"(.*OnnxModelWithCustomAbs.*)",
-        // R"(.*XmlModelWithCustomAbs.*)",
-        // R"(.*Gather_x2_add_mul_relu_concat_matmul.*)", +
-        // R"(.*SetMean.*)",
-        // R"(.*SetScale.*)",
-        // R"(.*smoke_LPT.*)",
-        // R"(.*GRUSequenceCPUTest.*)", // reorder BF16
-        // R"(.*LSTMSequenceCPUTest.*)", // reorder BF16
-        // R"(.*RNNSequenceCPUTest.*)" // reorder BF16
+        R"(.*OnnxModelWithCustomAbs.*)",
+        R"(.*XmlModelWithCustomAbs.*)",
+        R"(.*SetMean.*)",
+        R"(.*SetScale.*)",
+        R"(.*GRUSequenceCPUTest.*)", // reorder BF16
+        R"(.*LSTMSequenceCPUTest.*)", // reorder BF16
+        R"(.*RNNSequenceCPUTest.*)", // reorder BF16
+        R"(.*ConvConcatSubgraphTest.*)" // inPlace
     };
 #ifdef __APPLE__
         // TODO: Issue 55717

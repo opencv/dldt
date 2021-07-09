@@ -81,9 +81,6 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*XmlModelWithCustomAbs.*)",
         R"(.*SetMean.*)",
         R"(.*SetScale.*)",
-        R"(.*GRUSequenceCPUTest.*)", // reorder BF16
-        R"(.*LSTMSequenceCPUTest.*)", // reorder BF16
-        R"(.*RNNSequenceCPUTest.*)" // reorder BF16
     };
 #ifdef __APPLE__
         // TODO: Issue 55717

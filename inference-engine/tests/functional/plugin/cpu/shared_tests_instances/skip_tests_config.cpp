@@ -83,8 +83,7 @@ std::vector<std::string> disabledTestPatterns() {
         R"(.*SetScale.*)",
         R"(.*GRUSequenceCPUTest.*)", // reorder BF16
         R"(.*LSTMSequenceCPUTest.*)", // reorder BF16
-        R"(.*RNNSequenceCPUTest.*)", // reorder BF16
-        R"(.*ConvConcatSubgraphTest.*)" // inPlace
+        R"(.*RNNSequenceCPUTest.*)" // reorder BF16
     };
 #ifdef __APPLE__
         // TODO: Issue 55717

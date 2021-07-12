@@ -79,8 +79,6 @@ std::vector<std::string> disabledTestPatterns() {
         // INVESTIGATE
         R"(.*OnnxModelWithCustomAbs.*)",
         R"(.*XmlModelWithCustomAbs.*)",
-        R"(.*SetMean.*)",
-        R"(.*SetScale.*)",
     };
 #ifdef __APPLE__
         // TODO: Issue 55717

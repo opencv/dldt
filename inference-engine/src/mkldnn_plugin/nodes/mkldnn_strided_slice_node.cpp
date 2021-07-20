@@ -625,7 +625,7 @@ void MKLDNNStridedSliceNode::execute(mkldnn::stream strm) {
     stridedSlice();
 }
 
-void MKLDNNStridedSliceNode::stridedSlice() {
+inline void MKLDNNStridedSliceNode::stridedSlice() {
     const uint8_t* srcData = reinterpret_cast<const uint8_t*>(params.srcMemPtr->GetPtr()) + params.srcShift;
     uint8_t* dstData = reinterpret_cast<uint8_t*>(params.dstMemPtr->GetPtr());
 

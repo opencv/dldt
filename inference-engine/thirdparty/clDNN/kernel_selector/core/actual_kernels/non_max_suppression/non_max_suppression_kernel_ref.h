@@ -40,7 +40,7 @@ struct non_max_suppression_params : public base_params {
     bool has_second_output;
     bool has_third_output;
 
-    virtual ParamsKey GetParamsKey() const {
+    ParamsKey GetParamsKey() const override {
         auto k = base_params::GetParamsKey();
         return k;
     }

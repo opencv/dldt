@@ -40,7 +40,9 @@ private:
     std::vector<int> bOffsets;
     std::vector<int> cOffsets;
 
-    template<typename T0, typename T1> void process_data();
+    InferenceEngine::Precision precision;
+
+    template<typename T0, typename T1> inline void process_data();
 
     std::string errorPrefix;
 

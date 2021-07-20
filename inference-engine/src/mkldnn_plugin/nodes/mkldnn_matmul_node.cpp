@@ -205,6 +205,8 @@ void MKLDNNMatMulNode::createPrimitive() {
 
     params.shift1 = params.M * params.N * params.MB2;
     params.shift2 = params.M * params.N;
+
+    precision = getParentEdgeAt(0)->getDesc().getPrecision();
 }
 
 inline void process_gemm(char transa, char transb, int M, int N, int K, float alpha, const float *A, int lda,
@@ -238,7 +240,7 @@ inline void process_gemm(char transa, char transb, int M, int N, int K, float al
 }
 
 template<typename T0, typename T1>
-void MKLDNNMatMulNode::process_data() {
+inline void MKLDNNMatMulNode::process_data() {
     const T0* src0_ptr = reinterpret_cast<const T0*>(params.src0_mem_ptr->GetPtr());
     const T1* src1_ptr = reinterpret_cast<const T1*>(params.src1_mem_ptr->GetPtr());
     float* dst_ptr = reinterpret_cast<float*>(params.dst_mem_ptr->GetPtr());
@@ -272,19 +274,23 @@ void MKLDNNMatMulNode::process_data() {
 }
 
 void MKLDNNMatMulNode::execute(mkldnn::stream strm) {
-    switch (getParentEdgeAt(0)->getDesc().getPrecision()) {
-        case Precision::FP32:
+    switch (precision) {
+        case Precision::FP32: {
             process_data<float, float>();
             break;
-        case Precision::BF16:
+        }
+        case Precision::BF16: {
             process_data<uint16_t, uint16_t>();
             break;
-        case Precision::I8:
+        }
+        case Precision::I8: {
             process_data<int8_t, int8_t>();
             break;
-        case Precision::U8:
+        }
+        case Precision::U8: {
             process_data<uint8_t, int8_t>();
             break;
+        }
         default:
             IE_THROW()  << errorPrefix << " has incorrect precision on first input";
     }

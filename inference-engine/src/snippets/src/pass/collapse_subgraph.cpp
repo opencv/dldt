@@ -6,6 +6,7 @@
 #include "itt.hpp"
 
 #include "snippets/pass/collapse_subgraph.hpp"
+#include "snippets/pass/filter_fused.hpp"
 #include "snippets/op/subgraph.hpp"
 
 #include <ngraph/opsets/opset1.hpp>
@@ -60,18 +61,31 @@ auto has_cycles_of_dependencies(const std::vector<std::set<ngraph::Input<ngraph:
         std::unordered_set<ngraph::Node*> visited;
         std::queue<ngraph::Node*> stack;
         stack.push(from);
-
+        auto add_if_not_visited = [&visited, &stack](ngraph::Node* next){
+            if (visited.count(next) == 0) {
+                stack.push(next);
+            }
+        };
+        unsigned int from_to_distance = 0;
+        const unsigned int max_allowed_distance = 10000;
         while (stack.size() > 0) {
             ngraph::Node* curr = stack.front();
             visited.insert(curr);
 
+            if (from_to_distance++ == max_allowed_distance) {
+                // Return as if cycle dependence, if can't prove the opposite
+                return true;
+            }
             stack.pop();
 
             if (curr != to) {
-                for (const auto& next : curr->get_users()) {
-                    if (visited.count(next.get()) == 0) {
-                        stack.push(next.get());
-                    }
+                const auto all_users = curr->get_users();
+                if (all_users.size() == 1) {
+                    add_if_not_visited(all_users[0].get());
+                } else if (all_users.size() > 1) {
+                    std::unordered_set<std::shared_ptr<Node>> unique_users(all_users.begin(), all_users.end());
+                    for (const auto &n : unique_users)
+                        add_if_not_visited(n.get());
                 }
             } else {
                 return true;
@@ -219,32 +233,23 @@ auto has_supported_in_out(std::shared_ptr<Node> n) -> bool {
     }
 
     return true;
-};
-
+}
 } // namespace
 
-ngraph::snippets::pass::StartSubgraph::StartSubgraph(bool tokenize_by_node) : MatcherPass() {
+bool ngraph::snippets::pass::AppropriateForSubgraph(std::shared_ptr<Node> n) {
+    return is_lo(n) && has_supported_in_out(n);
+}
+
+ngraph::snippets::pass::StartSubgraph::StartSubgraph() : MatcherPass() {
     MATCHER_SCOPE(StartSubgraph);
-
-    auto has_multiple_output_edges = [](std::shared_ptr<Node> n) -> bool {
-        for (auto out : n->outputs()) {
-            if (out.get_target_inputs().size() != 1) return true;
-        }
-
-        return false;
-    };
 
     register_matcher(std::make_shared<pattern::Matcher>(
         std::make_shared<pattern::op::Label>(pattern::any_input(),
-        [tokenize_by_node, has_multiple_output_edges](std::shared_ptr<Node> n) {
-            return is_lo(n) &&
-                   has_supported_in_out(n) &&
-                   (tokenize_by_node || !has_subgraph_as_input(n)) &&
-                   has_multiple_output_edges(n);
+        [](std::shared_ptr<Node> n) {
+            return (GetSnippetsNodeType(n) == SnippetsNodeType::SubgraphStart);
         })),
         [](ngraph::pattern::Matcher &m) -> bool {
         auto node = m.get_match_root();
-
         remark(1) << "Match root"
                   << node->get_friendly_name()
                   << " " << node
@@ -262,7 +267,7 @@ ngraph::snippets::pass::StartSubgraph::StartSubgraph(bool tokenize_by_node) : Ma
     });
 }
 
-ngraph::snippets::pass::AttachToSubgraph::AttachToSubgraph(bool tokenize_by_node) : MatcherPass() {
+ngraph::snippets::pass::AttachToSubgraph::AttachToSubgraph() : MatcherPass() {
     MATCHER_SCOPE(AttachToSubgraph);
     enum continuation_strategy {
         reset,

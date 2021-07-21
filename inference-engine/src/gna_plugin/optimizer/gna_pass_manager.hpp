@@ -141,6 +141,11 @@ DECL_PASS(FlattenTrivialConcat);
 DECL_PASS(InsertConcatAligningFilter);
 
 /**
+ * @brief convolution based concat-aligning filter layer insertion required in cases when concat inputs size are not 64B - aligned
+ */
+DECL_PASS(InsertConcatAligningConvolutionFilter);
+
+/**
  * @brief concat-aligning filter if inserted need to be folowed by left aligning inupt in multiple inputs to concate case
  * or just followed by first input to concate. This cannot be done in inserting concat aliging phase
  */

@@ -4,6 +4,7 @@
 
 #include "gna_device.hpp"
 
+#include <iostream>
 #include <map>
 #include <string>
 #include <cstring>
@@ -43,9 +44,10 @@ uint8_t* GNADeviceHelper::alloc(uint32_t size_requested, uint32_t *size_granted)
     if (memPtr == nullptr) {
         THROW_GNA_EXCEPTION << "GNAAlloc failed to allocate memory. Requested: " << size_requested << " Granted: " << *(size_granted);
     }
-    dumpXNNROPtr = memPtr;
+    const auto memForUse = static_cast<uint8_t*>(memPtr);
+    dumpXNNROPtr = memForUse;
     dumpXNNROSize = *size_granted;
-    return static_cast<uint8_t *>(memPtr);
+    return memForUse;
 }
 
 void GNADeviceHelper::free(void * ptr) {
@@ -53,7 +55,7 @@ void GNADeviceHelper::free(void * ptr) {
 #if GNA_LIB_VER == 1
     GNAFree(nGNAHandle);
 #else
-    const auto status = Gna2MemoryFree(ptr);
+    const auto status = Gna2MemoryFree(static_cast<uint8_t*>(ptr));
     checkGna2Status(status, "Gna2MemoryFree");
 #endif
 }
@@ -139,7 +141,7 @@ uint32_t GNADeviceHelper::createModel(Gna2Model& gnaModel) const {
 #else
         "./";
 #endif
-    DumpGna2Model(gnaModel, path, false);
+    DumpGna2Model(gnaModel, path, true, dumpXNNROPtr);
 #endif
     const auto status = Gna2ModelCreate(nGnaDeviceIndex, &gnaModel, &modelId);
 

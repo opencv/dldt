@@ -769,8 +769,11 @@ void GNAPlugin::LoadNetwork(CNNNetwork & _network) {
         passes->registerPass<InsertCopyLayerPass>();
 
         passes->registerPass<FlattenTrivialConcatPass>();
+
         passes->registerPass<InsertConcatAligningFilterPass>();
+        passes->registerPass<InsertConcatAligningConvolutionFilterPass>();
         passes->registerPass<ReorderConcatInputsPass>();
+
         passes->registerPass<RemovePermutationsNHWCToNCHWPass>();
         passes->registerPass<InsertIdentityLayerPass>();
         passes->registerPass<BreakFusingOfOutputLayersPass>();

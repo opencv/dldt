@@ -57,6 +57,9 @@ std::vector<std::string> disabledTestPatterns() {
             // need to implement Export / Import
             R"(.*IEClassImportExportTestP.*)",
 
+            // Not allowed dynamic loop tests on GPU
+            R"(.*smoke_StaticShapeLoop_dynamic_exit.*)",
+
             // TODO: Issue: 59586, NormalizeL2 output mismatch for empty axes case
             R"(.*NormalizeL2LayerTest.*axes=\(\).*)"
     };

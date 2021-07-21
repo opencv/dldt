@@ -18,9 +18,15 @@ bool currentTestIsDisabled() {
     const auto fullName = ::testing::UnitTest::GetInstance()->current_test_info()->test_case_name()
                           + std::string(".") + ::testing::UnitTest::GetInstance()->current_test_info()->name();
     for (const auto &pattern : disabledTestPatterns()) {
+        try {
         std::regex re(pattern);
         if (std::regex_match(fullName, re))
             skip_test = true;
+        } catch (std::regex_error& ex) {
+            std::string err_msg = "fail to match regex (" + pattern + ") for " + std::string(ex.what()) + " ex code " + std::to_string(ex.code());
+            std::cerr << err_msg << std::endl;
+            throw std::runtime_error(err_msg);
+        }
     }
     return skip_test && !disable_tests_skipping;
 }

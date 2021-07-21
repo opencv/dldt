@@ -300,7 +300,6 @@ const std::vector<std::pair<std::string, InferenceEngine::Parameter>>& getDefaul
         {KEY_CONFIG_FILE, {std::string()}},
         {InferenceEngine::MYRIAD_DDR_TYPE, {InferenceEngine::MYRIAD_DDR_AUTO}},
         {InferenceEngine::MYRIAD_ENABLE_FORCE_RESET, {false}},
-        {VPU_MYRIAD_CONFIG_KEY(PLATFORM), {std::string()}},
         {InferenceEngine::MYRIAD_CHECK_PREPROCESSING_INSIDE_MODEL, {true}},
         {InferenceEngine::MYRIAD_ENABLE_EARLY_ELTWISE_RELU_FUSION, {true}},
         {InferenceEngine::MYRIAD_ENABLE_CUSTOM_RESHAPE_PARAM, {false}},
@@ -336,9 +335,6 @@ const std::vector<std::tuple<std::string, std::string, InferenceEngine::Paramete
             InferenceEngine::Parameter{true}),
         std::make_tuple(InferenceEngine::MYRIAD_COPY_OPTIMIZATION, InferenceEngine::PluginConfigParams::NO,
             InferenceEngine::Parameter{false}),
-
-        std::make_tuple(VPU_MYRIAD_CONFIG_KEY(PLATFORM), VPU_MYRIAD_CONFIG_VALUE(2480),
-            InferenceEngine::Parameter{VPU_MYRIAD_CONFIG_VALUE(2480)}),
 
         std::make_tuple(InferenceEngine::MYRIAD_PROTOCOL, InferenceEngine::MYRIAD_USB,
             InferenceEngine::Parameter{InferenceEngine::MYRIAD_USB}),

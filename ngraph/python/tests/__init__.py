@@ -102,7 +102,6 @@ xfail_issue_44965 = xfail_test(reason="E   RuntimeError: value info has no eleme
 xfail_issue_44968 = xfail_test(reason="E   Unsupported dynamic op: Squeeze")
 xfail_issue_44976 = xfail_test(reason="E   RuntimeError: Quantize layer with name:"
                                       "FakeQuantize_xxx has non const input on 1 port")
-xfail_issue_46762 = xfail_test(reason="Incorrect result of Minimum op if uint data type is used")
 xfail_issue_47323 = xfail_test(reason="RuntimeError: The plugin does not support FP64")
 xfail_issue_47337 = xfail_test(reason="RuntimeError: Unsupported dynamic ops: v1::OneHot")
 xfail_issue_33593 = xfail_test(reason="Current implementation of MaxPool doesn't support indices output")

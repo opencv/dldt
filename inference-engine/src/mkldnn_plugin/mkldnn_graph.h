@@ -218,6 +218,7 @@ protected:
     void Allocate();
     void AllocateWithReuse();
     void CreatePrimitives();
+    void ExtractConstantNodes();
     void ExecuteConstantNodesOnly();
 
     friend class MKLDNNInferRequest;
@@ -225,7 +226,13 @@ protected:
     friend InferenceEngine::CNNNetwork dump_graph_as_ie_ngraph_net(const MKLDNNGraph &graph);
 
 private:
+    // these copies of graphNodes are to avoid regular checking for
+    // constant node in ExecuteConstantNodesOnly and Infer methods
+    std::vector<MKLDNNNodePtr> constantGraphNodes;
+    std::vector<MKLDNNNodePtr> mutableGraphNodes;
+
     void EnforceBF16();
+    inline void ExecuteNode(const MKLDNNNodePtr& node, const mkldnn::stream& stream) const;
 };
 
 }  // namespace MKLDNNPlugin

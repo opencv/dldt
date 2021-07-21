@@ -41,16 +41,18 @@ Config::Config() {
     updateProperties();
 }
 
-
 void Config::readProperties(const std::map<std::string, std::string> &prop) {
-    auto streamExecutorConfigKeys = streamExecutorConfig.SupportedKeys();
-    for (auto& kvp : prop) {
-        auto& key = kvp.first;
-        auto& val = kvp.second;
-
+    const auto streamExecutorConfigKeys = streamExecutorConfig.SupportedKeys();
+    const auto hintsConfigKeys = perfHintsConfig.SupportedKeys();
+    for (const auto& kvp : prop) {
+        const auto& key = kvp.first;
+        const auto& val = kvp.second;
         if (streamExecutorConfigKeys.end() !=
             std::find(std::begin(streamExecutorConfigKeys), std::end(streamExecutorConfigKeys), key)) {
             streamExecutorConfig.SetConfig(key, val);
+        } else if (hintsConfigKeys.end() !=
+                      std::find(std::begin(hintsConfigKeys), std::end(hintsConfigKeys), key)) {
+            perfHintsConfig.SetConfig(key, val);
         } else if (key == PluginConfigParams::KEY_DYN_BATCH_LIMIT) {
             int val_i = -1;
             try {
@@ -158,6 +160,11 @@ void Config::updateProperties() {
             _config.insert({ PluginConfigParams::KEY_ENFORCE_BF16, PluginConfigParams::YES });
         else
             _config.insert({ PluginConfigParams::KEY_ENFORCE_BF16, PluginConfigParams::NO });
+        if (!perfHintsConfig.ovPerfHint.empty())
+            _config.insert({ PluginConfigParams::KEY_PERFORMANCE_HINT, perfHintsConfig.ovPerfHint });
+        if (!perfHintsConfig.ovPerfHintNumRequests)
+            _config.insert({ PluginConfigParams::KEY_PERFORMANCE_HINT_NUM_REQUESTS,
+                             std::to_string(perfHintsConfig.ovPerfHintNumRequests) });
     }
 }
 

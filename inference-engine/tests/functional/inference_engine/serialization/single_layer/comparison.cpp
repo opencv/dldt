@@ -1,15 +1,18 @@
-// Copyright (C) 2018-2021 Intel Corporation
+// Copyright (C) 2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
 
 #include <vector>
-#include "single_layer_tests/comparison.hpp"
+#include "shared_test_classes/single_layer/comparison.hpp"
 #include "common_test_utils/test_constants.hpp"
 
 using namespace LayerTestsDefinitions;
 using namespace LayerTestsDefinitions::ComparisonParams;
 
 namespace {
+    TEST_P(ComparisonLayerTest, Serialize) {
+        Serialize();
+    }
 
 std::map<std::vector<size_t>, std::vector<std::vector<size_t>>> inputShapes = {
         {{1}, {{1}, {17}, {1, 1}, {2, 18}, {1, 1, 2}, {2, 2, 3}, {1, 1, 2, 3}}},
@@ -24,6 +27,7 @@ std::vector<InferenceEngine::Precision> inputsPrecisions = {
         InferenceEngine::Precision::FP32,
         InferenceEngine::Precision::FP16,
         InferenceEngine::Precision::I32,
+        InferenceEngine::Precision::U32,
         InferenceEngine::Precision::BOOL,
 };
 

@@ -421,7 +421,6 @@ max_pool_2d_1channel_1image_overpadded
 grn_2d_with_bias
 erf
 divide_adjoint_stability
-equal
 notequal
 greater
 greatereq

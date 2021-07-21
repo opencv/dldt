@@ -39,7 +39,8 @@ struct SubCTestGAPI : public DivCTestGAPI
 struct MeanValueGAPI: public TestParams<std::tuple<cv::Size, double>> {};
 //------------------------------------------------------------------------------
 
-struct ResizeTestIE: public testing::TestWithParam<std::tuple<int, int, std::pair<cv::Size, cv::Size>, double>> {};
+struct ResizeTestIE: public testing::TestWithParam<std::tuple<int, int, std::pair<cv::Size, cv::Size>, double, size_t>> {};
+struct ResizeBatchedTestIE: public testing::TestWithParam<std::tuple<int, int, std::pair<cv::Size, cv::Size>, double, size_t>> {};
 
 struct SplitTestIE: public TestParams<std::tuple<int, cv::Size, double>> {};
 struct MergeTestIE: public TestParams<std::tuple<int, cv::Size, double>> {};
@@ -57,7 +58,16 @@ struct ColorConvertYUV420TestIE:
     public testing::TestWithParam<std::tuple<InferenceEngine::ColorFormat,  // input color format NV12 or I420
                                              InferenceEngine::Layout,       // output layout
                                              cv::Size,                      // matrix size (input and output)
-                                             double>>                       // tolerance
+                                             double,                        // tolerance
+                                             size_t>>                       // repetitions 
+{};
+
+struct ColorConvertYUV420BatchedTestIE:
+    public testing::TestWithParam<std::tuple<InferenceEngine::ColorFormat,  // input color format NV12 or I420
+                                             InferenceEngine::Layout,       // output layout
+                                             cv::Size,                      // matrix size (input and output)
+                                             double,                        // tolerance
+                                             size_t>>                       // batch size
 {};
 
 struct PrecisionConvertTestIE: public TestParams<std::tuple<cv::Size,

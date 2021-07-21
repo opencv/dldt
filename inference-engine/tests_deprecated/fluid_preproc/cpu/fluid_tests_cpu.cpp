@@ -224,20 +224,47 @@ INSTANTIATE_TEST_SUITE_P(ResizeTestFluid_U8, ResizeTestIE,
                         Combine(Values(CV_8UC1, CV_8UC3),
                                 Values(cv::INTER_LINEAR, cv::INTER_AREA),
                                 Values(TEST_RESIZE_PAIRS),
-                                Values(4))); // error not more than 4 unit
+                                Values(4),  // error not more than 4 unit
+                                Values(1, 4, 8)));
 #else
 INSTANTIATE_TEST_SUITE_P(ResizeTestFluid_U8, ResizeTestIE,
                         Combine(Values(CV_8UC1, CV_8UC3),
                                 Values(cv::INTER_LINEAR, cv::INTER_AREA),
                                 Values(TEST_RESIZE_PAIRS),
-                                Values(1))); // error not more than 1 unit
+                                Values(1),  // error not more than 1 unit
+                                Values(1, 4, 8)));
 #endif
 
 INSTANTIATE_TEST_SUITE_P(ResizeTestFluid_F32, ResizeTestIE,
                         Combine(Values(CV_32FC1, CV_32FC3),
                                 Values(cv::INTER_LINEAR, cv::INTER_AREA),
                                 Values(TEST_RESIZE_PAIRS),
-                                Values(0.05))); // error within 0.05 units
+                                Values(0.05),   // error within 0.05 units
+                                Values(1, 4, 8)));
+
+
+#if defined(__arm__) || defined(__aarch64__)
+INSTANTIATE_TEST_SUITE_P(ResizeBatchedTestIE_U8, ResizeBatchedTestIE,
+                        Combine(Values(CV_8UC1, CV_8UC3),
+                                Values(cv::INTER_LINEAR, cv::INTER_AREA),
+                                Values(TEST_RESIZE_PAIRS),
+                                Values(4),  // error not more than 4 unit
+                                Values(1, 4, 8)));
+#else
+INSTANTIATE_TEST_SUITE_P(ResizeBatchedTestIE_U8, ResizeBatchedTestIE,
+                        Combine(Values(CV_8UC1, CV_8UC3),
+                                Values(cv::INTER_LINEAR, cv::INTER_AREA),
+                                Values(TEST_RESIZE_PAIRS),
+                                Values(1),  // error not more than 1 unit
+                                Values(1, 4, 8)));
+#endif
+
+INSTANTIATE_TEST_SUITE_P(ResizeBatchedTestIE_F32, ResizeBatchedTestIE,
+                        Combine(Values(CV_32FC1, CV_32FC3),
+                                Values(cv::INTER_LINEAR, cv::INTER_AREA),
+                                Values(TEST_RESIZE_PAIRS),
+                                Values(0.05),   // error within 0.05 units
+                                Values(1, 4, 8)));
 
 INSTANTIATE_TEST_SUITE_P(SplitTestFluid, SplitTestIE,
                         Combine(Values(CV_8UC2, CV_8UC3, CV_8UC4,
@@ -280,7 +307,23 @@ INSTANTIATE_TEST_SUITE_P(ColorConvertYUV420Fluid, ColorConvertYUV420TestIE,
                                        cv::Size( 320,  200),
                                        cv::Size( 300,  300),
                                        cv::Size( 150,  150)),
-                                Values(0)));
+                                Values(0),
+                                Values(1, 2, 4, 8)));
+
+INSTANTIATE_TEST_SUITE_P(ColorConvertYUV420BatchedFluid, ColorConvertYUV420BatchedTestIE,
+                        Combine(Values(InferenceEngine::NV12, InferenceEngine::I420),
+                                Values(InferenceEngine::NHWC, InferenceEngine::NCHW),
+                                Values(cv::Size(3840, 2160),
+                                       cv::Size(1920, 1080),
+                                       cv::Size(1280,  720),
+                                       cv::Size(1280,  960),
+                                       cv::Size( 960,  720),
+                                       cv::Size( 640,  480),
+                                       cv::Size( 320,  200),
+                                       cv::Size( 300,  300),
+                                       cv::Size( 150,  150)),
+                                Values(0),
+                                Values(1, 2, 4, 8)));
 
 INSTANTIATE_TEST_SUITE_P(Reorder_HWC2CHW, ColorConvertTestIE,
                         Combine(Values(CV_8U, CV_32F, CV_16S, CV_16F),

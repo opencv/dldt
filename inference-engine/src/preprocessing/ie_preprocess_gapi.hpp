@@ -44,14 +44,26 @@ class PreprocEngine {
                       Update update);
 
     template<typename BlobTypePtr>
-    void preprocessBlob(const BlobTypePtr &inBlob, MemoryBlob::Ptr &outBlob,
+    void preprocessTypedBlob(const BlobTypePtr &inBlob, MemoryBlob::Ptr &outBlob,
         ResizeAlgorithm algorithm, ColorFormat in_fmt, ColorFormat out_fmt, bool omp_serial,
         int batch_size);
+
+    void preprocessBlob(const Blob::Ptr &inBlob, MemoryBlob::Ptr &outBlob, const ResizeAlgorithm &algorithm,
+        ColorFormat in_fmt, ColorFormat out_fmt, bool omp_serial, int batch_size);
+
+    void preprocessBatchedBlob(const BatchedBlob::Ptr &inBlob, MemoryBlob::Ptr &outBlob,
+        ResizeAlgorithm algorithm, ColorFormat in_fmt, ColorFormat out_fmt, bool omp_serial,
+        int batch_size);
+
+    static void checkSingleBlobApplicabilityGAPI(const Blob::Ptr &src, const SizeVector &network_input_valid_dims);
+    static void checkBatchedBlobApplicabilityGAPI(const BatchedBlob::Ptr &src, const SizeVector &network_input_valid_dims);
+
+    template<typename BlobPtrType>
+    static int getCorrectBatchSize(int batch_size, const BlobPtrType& roiBlob);
 
 public:
     PreprocEngine();
     static void checkApplicabilityGAPI(const Blob::Ptr &src, const Blob::Ptr &dst);
-    static int getCorrectBatchSize(int batch_size, const Blob::Ptr& roiBlob);
     void preprocessWithGAPI(const Blob::Ptr &inBlob, Blob::Ptr &outBlob, const ResizeAlgorithm &algorithm,
         ColorFormat in_fmt, bool omp_serial, int batch_size = -1);
 };

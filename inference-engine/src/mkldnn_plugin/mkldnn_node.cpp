@@ -1069,8 +1069,7 @@ int MKLDNNNode::batchToProcess() {
     return dynBatchLim == 0 ? getMaxBatch() : std::min<int>(getMaxBatch(), dynBatchLim);
 }
 
-// TODO [DS]: rewrite with size_t return value and using .getMaxDims()
-int MKLDNNNode::getMaxBatch() {
+size_t MKLDNNNode::getMaxBatch() {
     // FIXME: batch != 0 dims number
     if (!inputShapes.empty()) {
         if (inputShapes[0].getRank())

@@ -69,6 +69,7 @@ enum class KernelType {
     CUM_SUM,
     EMBEDDING_BAG,
     EXTRACT_IMAGE_PATCHES,
+    NON_MAX_SUPPRESSION,
     LOOP
 };
 
@@ -580,5 +581,13 @@ enum class EmbeddingBagType {
     PACKED_SUM,
     OFFSETS_SUM,
     SEGMENTS_SUM
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// BoxEncodingType
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+enum class BoxEncodingType {
+    BOX_ENCODING_CORNER,
+    BOX_ENCODING_CENTER,
 };
 }  // namespace kernel_selector

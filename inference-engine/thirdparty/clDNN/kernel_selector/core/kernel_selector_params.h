@@ -558,6 +558,7 @@ struct fused_operation_desc {
     size_t dep_size;
     MultiDataTensor tensors;
     DataTensor output_tensor;
+    DataTensor node_output_tensor;
     size_t op_id;
     std::vector<std::pair<size_t, Datatype>> fused_op_ids;
 

@@ -1742,7 +1742,7 @@ std::string FusedOpsCodeGenerator::GetJitLoad(const FusedOpsConfiguration& conf,
     // Eltwise fused op can't have full tensor argument when requested vec_size > 1, since it might require
     // splitting load into several parts and some kind of index recalculation which is not supported
     if (desc.GetType() == KernelType::ELTWISE && !valid_broadcast_case &&
-        input_tensor.GetLayout() != prim_output.GetLayout() && conf.vec_size > 1) {
+        input_tensor.GetLayout() != desc.node_output_tensor.GetLayout() && conf.vec_size > 1) {
         throw std::runtime_error("[clDNN] Mixed layouts of input tensors are not supported in fused eltwise:"
                                  "\nfused_input: " + toString_v2(input_tensor) +
                                  "\noutput: " + toString_v2(prim_output));

@@ -67,12 +67,13 @@ namespace LayerTestsDefinitions {
 
         auto &s = LayerTestsUtils::Summary::getInstance();
         s.setDeviceName(targetDevice);
+        auto report_func = function;
 
         if (FuncTestUtils::SkipTestsConfig::currentTestIsDisabled()) {
-            s.updateOPsStats(function, PassRate::Statuses::SKIPPED);
+            s.updateOPsStats(report_func, PassRate::Statuses::SKIPPED);
             GTEST_SKIP() << "Disabled test due to configuration" << std::endl;
         } else {
-            s.updateOPsStats(function, PassRate::Statuses::CRASHED);
+            s.updateOPsStats(report_func, PassRate::Statuses::CRASHED);
         }
 
         try {
@@ -88,16 +89,16 @@ namespace LayerTestsDefinitions {
                 Infer();
                 Validate();
             }
-            s.updateOPsStats(function, PassRate::Statuses::PASSED);
+            s.updateOPsStats(report_func, PassRate::Statuses::PASSED);
         }
         catch (const std::runtime_error &re) {
-            s.updateOPsStats(function, PassRate::Statuses::FAILED);
+            s.updateOPsStats(report_func, PassRate::Statuses::FAILED);
             GTEST_FATAL_FAILURE_(re.what());
         } catch (const std::exception &ex) {
-            s.updateOPsStats(function, PassRate::Statuses::FAILED);
+            s.updateOPsStats(report_func, PassRate::Statuses::FAILED);
             GTEST_FATAL_FAILURE_(ex.what());
         } catch (...) {
-            s.updateOPsStats(function, PassRate::Statuses::FAILED);
+            s.updateOPsStats(report_func, PassRate::Statuses::FAILED);
             GTEST_FATAL_FAILURE_("Unknown failure occurred.");
         }
     }
@@ -125,16 +126,17 @@ namespace LayerTestsDefinitions {
         }
 
         // evaluate method is not implemented for TI op.
+        auto func_copy = ngraph::clone_function(*function);
         ngraph::pass::Manager manager;
         manager.register_pass<ngraph::pass::UnrollTensorIterator>();
-        manager.run_passes(function);
+        manager.run_passes(func_copy);
 
         const auto &outInfo = executableNetwork.GetOutputsInfo();
         HostTensorVector outputTensors(outInfo.size());
         for (auto& outTensor : outputTensors) {
             outTensor = std::make_shared<HostTensor>();
         }
-        function->evaluate(outputTensors, inputTensors, eval_context);
+        func_copy->evaluate(outputTensors, inputTensors, eval_context);
 
         std::vector<std::pair<element::Type, std::vector<std::uint8_t>>> outputs(outInfo.size());
         for (size_t idx = 0; idx < outInfo.size(); ++idx) {
@@ -197,7 +199,7 @@ namespace LayerTestsDefinitions {
            manager.run_passes(function);
         } else if (transformation == ngraph::helpers::MemoryTransformation::LOW_LATENCY_V2_REGULAR_API) {
             cnnNetwork = InferenceEngine::CNNNetwork{function};
-           InferenceEngine::lowLatency2(cnnNetwork, iteration_count);
+            InferenceEngine::lowLatency2(cnnNetwork, iteration_count);
         }
     }
 

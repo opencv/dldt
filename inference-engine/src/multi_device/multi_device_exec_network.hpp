@@ -57,7 +57,7 @@ public:
             return false;
         }
     }
-protected:
+private:
     std::queue<T>   _queue;
     std::mutex      _mutex;
 };
@@ -67,10 +67,11 @@ public:
     ThreadSafeBoundedQueue() = default;
     bool try_push(T value) {
         std::lock_guard<std::mutex> lock(_mutex);
-        if (_capacity) {
+        if (_capacity > _queue.size()) {
             _queue.push(std::move(value));
+            return true;
         }
-        return _capacity;
+        return false;
     }
     bool try_pop(T& value) {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -87,10 +88,15 @@ public:
         _capacity = newCapacity;
     }
 
-protected:
+    size_t size() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _queue.size();
+    }
+
+private:
     std::queue<T>   _queue;
-    std::mutex      _mutex;
-    bool            _capacity = false;
+    mutable std::mutex      _mutex;
+    std::size_t     _capacity { 0 };
 };
 #endif
 

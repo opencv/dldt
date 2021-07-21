@@ -129,6 +129,11 @@ static bool replace_squeeze_unsqueeze(const std::shared_ptr<Node>& node) {
     auto pat =
         opset3::Constant::create<int64_t>(element::i64, Shape{target_shape.size()}, target_shape);
 
+    while (is_type<opset3::Reshape>(input) || is_type<opset3::Squeeze>(input) ||
+           is_type<opset3::Unsqueeze>(input)) {
+        input = input->input_value(0).get_node_shared_ptr();
+    }
+
     if (is_type<opset3::Reshape>(input) || is_type<opset3::Squeeze>(input) ||
         is_type<opset3::Unsqueeze>(input)) {
         reshape = make_shared<opset3::Reshape>(input->input_value(0), pat, false);

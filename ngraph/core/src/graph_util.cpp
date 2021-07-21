@@ -906,9 +906,9 @@ bool ngraph::replace_output_update_name(Output<Node> output, const Output<Node>&
         {
             replacement.get_node()->set_friendly_name(output.get_node()->get_friendly_name());
             // Update output tensor name
-            NGRAPH_SUPPRESS_DEPRECATED_START
-            replacement.get_tensor().set_name(output.get_node()->get_friendly_name());
-            NGRAPH_SUPPRESS_DEPRECATED_END
+            auto names = replacement.get_tensor().get_names();
+            names.insert("__ov_generated_tensor__" + output.get_node()->get_friendly_name());
+            replacement.get_tensor().set_names(names);
         }
 
         // Save replacement tensor names before replacement as they will be

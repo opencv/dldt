@@ -41,6 +41,33 @@ struct Parsed {
     std::map<std::string, T> _config;
 };
 
+class ExtensionWrapper: public IRExtension {
+public:
+    NGRAPH_RTTI_DECLARATION;
+    ExtensionWrapper(const IExtensionPtr& ext, const std::string& opsetVersion, const ngraph::Node::type_info_t& type, const ngraph::OpSet& opset)
+        : IRExtension(opsetVersion), extension(ext), type(type), opset(opset) {}
+
+    const ngraph::Node::type_info_t get_type() override {
+        return type;
+    }
+    ngraph::OutputVector create(const ngraph::OutputVector& inputs, ngraph::AttributeVisitor& visitor) override {
+        std::shared_ptr<ngraph::Node> node(opset.create_insensitive(type.name));
+
+        node->set_arguments(inputs);
+        if (node->visit_attributes(visitor)) {
+            node->constructor_validate_and_infer_types();
+        }
+        return node->outputs();
+    }
+
+private:
+    IExtensionPtr extension;
+    ngraph::Node::type_info_t type;
+    ngraph::OpSet opset;
+};
+
+NGRAPH_RTTI_DEFINITION(ExtensionWrapper, "ExtensionWrapper", 0, IRExtension);
+
 template <typename T = Parameter>
 Parsed<T> parseDeviceNameIntoConfig(const std::string& deviceName, const std::map<std::string, T>& config = {}) {
     auto config_ = config;
@@ -222,6 +249,8 @@ class Core::Impl : public ICore, public std::enable_shared_from_this<ICore> {
 
     std::unordered_set<std::string> opsetNames;
     std::vector<IExtensionPtr> extensions;
+
+    std::vector<NewExtension::Ptr> new_extensions;
 
     std::map<std::string, PluginDescriptor> pluginRegistry;
     mutable std::mutex pluginsMutex;  // to lock parallel access to pluginRegistry and plugins
@@ -849,6 +878,11 @@ public:
             if (opsetNames.find(it.first) != opsetNames.end())
                 IE_THROW() << "Cannot add opset with name: " << it.first << ". Opset with the same name already exists.";
             opsetNames.insert(it.first);
+
+            // Wrap to new API
+            for (const auto& type_info : it.second.get_types_info()) {
+                AddExtension(std::make_shared<ExtensionWrapper>(extension, it.first, type_info, it.second));
+            }
         }
 
         // add extensions for already created plugins
@@ -858,6 +892,28 @@ public:
             } catch (...) {}
         }
         extensions.emplace_back(extension);
+    }
+
+    void AddExtension(const std::string& library_path) {
+        details::SharedObjectLoader so(library_path.c_str());
+        try {
+            using CreateF = void(std::vector<InferenceEngine::NewExtension::Ptr>&);
+            std::vector<InferenceEngine::NewExtension::Ptr> ext;
+            reinterpret_cast<CreateF*>(so.get_symbol("CreateExtensions"))(ext);
+            for (const auto& ex : ext) {
+                new_extensions.emplace_back(std::make_shared<SOExtension>(so, ex));
+            }
+        } catch (...) {
+            details::Rethrow();
+        }
+    }
+
+    void AddExtension(const std::vector<NewExtension::Ptr>& extensions) {
+        for (const auto& extension : extensions)
+            AddExtension(extension);
+    }
+    void AddExtension(const NewExtension::Ptr& extension) {
+        new_extensions.emplace_back(extension);
     }
 
     /**
@@ -1005,7 +1061,23 @@ void Core::AddExtension(IExtensionPtr extension, const std::string& deviceName_)
     _impl->AddExtension(extension);
 }
 
+#ifdef ENABLE_UNICODE_PATH_SUPPORT
+void Core::AddExtension(const std::wstring& library_path) {
+    AddExtension(FileUtils::wStringtoMBCSstringChar(library_path));
+}
+#endif
+
+void Core::AddExtension(const std::string& library_path) {
+    _impl->AddExtension(library_path);
+}
+
 void Core::AddExtension(const IExtensionPtr& extension) {
+    _impl->AddExtension(extension);
+}
+void Core::AddExtension(const std::vector<NewExtension::Ptr>& extensions) {
+    _impl->AddExtension(extensions);
+}
+void Core::AddExtension(const NewExtension::Ptr& extension) {
     _impl->AddExtension(extension);
 }
 

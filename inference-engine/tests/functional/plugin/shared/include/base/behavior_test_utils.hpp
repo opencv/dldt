@@ -87,8 +87,10 @@ public:
     }
 
     void SetUp()  override {
+        SKIP_IF_CURRENT_TEST_IS_DISABLED()
         std::tie(netPrecision, targetDevice, configuration) = this->GetParam();
-        function = ngraph::builder::subgraph::makeConvPoolRelu();
+        function = ngraph::builder::subgraph::makeConvPoolRelu({1, 1, 32, 32},
+                                                               FuncTestUtils::PrecisionUtils::convertIE2nGraphPrc(netPrecision));
     }
 
     void TearDown() override {
@@ -103,6 +105,24 @@ public:
     InferenceEngine::Precision netPrecision;
     std::string targetDevice;
     std::map<std::string, std::string> configuration;
+};
+
+class InferRequestTests : public BehaviorTestsBasic {
+public:
+    void SetUp()  override {
+        // Skip test according to plugin specific disabledTestPatterns() (if any)
+        SKIP_IF_CURRENT_TEST_IS_DISABLED()
+        std::tie(netPrecision, targetDevice, configuration) = this->GetParam();
+        function = ngraph::builder::subgraph::makeConvPoolRelu({1, 1, 32, 32},
+                                                               FuncTestUtils::PrecisionUtils::convertIE2nGraphPrc(netPrecision));
+        cnnNet = InferenceEngine::CNNNetwork(function);
+        // Load CNNNetwork to target plugins
+        execNet = ie->LoadNetwork(cnnNet, targetDevice, configuration);
+    }
+
+protected:
+    InferenceEngine::CNNNetwork cnnNet;
+    InferenceEngine::ExecutableNetwork execNet;
 };
 
 using BehaviorParamsSingleOption = std::tuple<

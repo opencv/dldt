@@ -10,7 +10,8 @@
 import argparse
 import logging as log
 import sys
-import os
+from pathlib import Path
+
 import numpy as np
 from openvino.inference_engine import IECore
 
@@ -37,9 +38,9 @@ def infer(ir_path, device):
     :param device: Device name for inference
     :return: Dict containing out blob name and out data
     """
-
-    bin_path = os.path.splitext(ir_path)[0] + '.bin'
     ie = IECore()
+
+    bin_path = ir_path.replace(".xml", ".bin")
     net = ie.read_network(model=ir_path, weights=bin_path)
     exec_net = ie.load_network(net, device)
     res = exec_net.infer(inputs=input_preparation(net))
@@ -58,9 +59,9 @@ def cli_parser():
     :return: ir path, device and output folder path variables.
     """
     parser = argparse.ArgumentParser(description='Arguments for python API inference')
-    parser.add_argument('-m', dest='ir_path', required=True, help='Path to XML file of IR')
+    parser.add_argument('-m', dest='ir_path', required=True, help='Path to XML file of IR',  action="append")
     parser.add_argument('-d', dest='device', required=True, help='Target device to infer on')
-    parser.add_argument('-r', dest='out_path', required=True,
+    parser.add_argument('-r', dest='out_path', required=True, type=Path,
                         help='Dumps results to the output file')
     args = parser.parse_args()
     ir_path = args.ir_path
@@ -71,9 +72,13 @@ def cli_parser():
 
 if __name__ == "__main__":
     ir_path, device, out_path = cli_parser()
-    results = infer(ir_path=ir_path, device=device)
-    np.savez(out_path, **results)
-    log.info("Path for inference results: {}".format(out_path))
-    log.info("Inference results:")
-    log.info(results)
-    log.info("SUCCESS!")
+
+    for model in ir_path:
+        result = infer(ir_path=model, device=device)
+
+        np.savez(out_path / f"{Path(model).name}.npz", **result)
+
+        log.info("Path for inference results: {}".format(out_path))
+        log.info("Inference results:")
+        log.info(result)
+        log.info("SUCCESS!")

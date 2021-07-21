@@ -34,7 +34,7 @@ using namespace ngraph;
 
 static string s_manifest = "${MANIFEST}";
 
-NGRAPH_TEST(${BACKEND_NAME}, tan)
+NGRAPH_TEST(${BACKEND_NAME}, tan_float)
 {
     Shape shape{11};
     auto A = make_shared<op::Parameter>(element::f32, shape);

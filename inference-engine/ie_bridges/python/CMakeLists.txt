@@ -95,7 +95,7 @@ install(PROGRAMS src/openvino/__init__.py
 ie_cpack_add_component(python_samples)
 
 install(DIRECTORY sample/
-        DESTINATION ${IE_CPACK_IE_DIR}/samples/python
+        DESTINATION samples/python
         COMPONENT python_samples)
 
 ie_cpack(${PYTHON_COMPONENT} python_samples)

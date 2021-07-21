@@ -30,6 +30,17 @@ ie_cpack_add_component(setupvars REQUIRED)
 
 if(UNIX)
     install(PROGRAMS setupvars/setupvars.sh
+            DESTINATION .
+            COMPONENT setupvars)
+elseif(WIN32)
+    install(PROGRAMS setupvars/setupvars.bat
+            DESTINATION .
+            COMPONENT setupvars)
+endif()
+
+# TODO: remove before merge
+if(UNIX)
+    install(PROGRAMS setupvars/setupvars.sh
             DESTINATION bin
             COMPONENT setupvars)
 elseif(WIN32)
@@ -51,7 +62,7 @@ endif()
 
 ie_cpack_add_component(deployment_manager REQUIRED)
 install(DIRECTORY deployment_manager/
-        DESTINATION deployment_tools/tools/deployment_manager
+        DESTINATION tools/deployment_manager
         COMPONENT deployment_manager
         USE_SOURCE_PERMISSIONS)
 
@@ -61,13 +72,13 @@ ie_cpack_add_component(demo_scripts DEPENDS core)
 
 if(UNIX)
     install(DIRECTORY demo/
-            DESTINATION deployment_tools/demo
+            DESTINATION extras/open_model_zoo/demo
             COMPONENT demo_scripts
             USE_SOURCE_PERMISSIONS
             PATTERN *.bat EXCLUDE)
 elseif(WIN32)
     install(DIRECTORY demo/
-            DESTINATION deployment_tools/demo
+            DESTINATION extras/open_model_zoo/demo
             COMPONENT demo_scripts
             USE_SOURCE_PERMISSIONS
             PATTERN *.sh EXCLUDE)

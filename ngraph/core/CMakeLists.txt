@@ -68,7 +68,7 @@ set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/pass/convert_precis
 
 # Defines macro in C++ to load backend plugin
 target_include_directories(ngraph PUBLIC $<BUILD_INTERFACE:${NGRAPH_INCLUDE_PATH}>
-                                         $<INSTALL_INTERFACE:${NGRAPH_INSTALL_INCLUDE}>
+                                         $<INSTALL_INTERFACE:runtime/include>
                                   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
                                           ${CMAKE_CURRENT_BINARY_DIR}/include)
 
@@ -84,12 +84,12 @@ target_link_libraries(ngraph PRIVATE ${CMAKE_DL_LIBS})
 export(TARGETS ngraph NAMESPACE ngraph:: APPEND FILE "${NGRAPH_TARGETS_FILE}")
 
 install(TARGETS ngraph EXPORT ngraphTargets
-        RUNTIME DESTINATION ${NGRAPH_INSTALL_LIB} COMPONENT ngraph
-        ARCHIVE DESTINATION ${NGRAPH_INSTALL_LIB} COMPONENT ngraph
-        LIBRARY DESTINATION ${NGRAPH_INSTALL_LIB} COMPONENT ngraph)
+        RUNTIME DESTINATION ${IE_CPACK_RUNTIME_PATH} COMPONENT ngraph
+        ARCHIVE DESTINATION ${IE_CPACK_ARCHIVE_PATH} COMPONENT ngraph
+        LIBRARY DESTINATION ${IE_CPACK_LIBRARY_PATH} COMPONENT ngraph)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
-        DESTINATION ${NGRAPH_INSTALL_INCLUDE}
+        DESTINATION "runtime/include/ngraph"
         COMPONENT ngraph_dev
         FILES_MATCHING
             PATTERN "*.hpp"
@@ -97,13 +97,13 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
             PATTERN "*version.in.hpp" EXCLUDE)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/ngraph/version.hpp
-        DESTINATION ${NGRAPH_INSTALL_INCLUDE}/ngraph
+        DESTINATION "runtime/include/ngraph"
         COMPONENT ngraph_dev)
 
 install(EXPORT ngraphTargets
         FILE ngraphTargets.cmake
         NAMESPACE ngraph::
-        DESTINATION "deployment_tools/ngraph/cmake"
+        DESTINATION "runtime/cmake"
         COMPONENT ngraph_dev)
 
 configure_package_config_file(${OpenVINO_SOURCE_DIR}/cmake/templates/ngraphConfig.cmake.in
@@ -116,5 +116,5 @@ write_basic_package_version_file(${ngraph_BINARY_DIR}/ngraphConfigVersion.cmake
 
 install(FILES ${ngraph_BINARY_DIR}/ngraphConfig.cmake
               ${ngraph_BINARY_DIR}/ngraphConfigVersion.cmake
-        DESTINATION "deployment_tools/ngraph/cmake"
+        DESTINATION "runtime/cmake"
         COMPONENT ngraph_dev)

@@ -31,8 +31,12 @@ jobs:
     BUILD_DIR: $(WORK_DIR)/build
     BUILD_SAMPLES_DIR: $(WORK_DIR)/build_samples
     INSTALL_DIR: $(WORK_DIR)/install_pkg
+<<<<<<< HEAD
+    SETUPVARS: $(INSTALL_DIR)/setupvars.sh
+=======
     INSTALL_TEST_DIR: $(INSTALL_DIR)/tests
     SETUPVARS: $(INSTALL_DIR)/bin/setupvars.sh
+>>>>>>> upstream/master
 
   steps:
   - script: |
@@ -132,6 +136,9 @@ jobs:
   - script: ls -alR $(INSTALL_DIR)
     displayName: 'List install files'
 
+<<<<<<< HEAD
+  - script: $(INSTALL_DIR)/samples/cpp/build_samples.sh
+=======
   - script: |
       mkdir $(INSTALL_DIR)/opencv/
       cmake -DCMAKE_INSTALL_PREFIX=$(INSTALL_DIR) -DCOMPONENT=tests -P cmake_install.cmake && cp -R $(REPO_DIR)/inference-engine/temp/opencv_4.5.2_ubuntu18/opencv/* $(INSTALL_DIR)/opencv/
@@ -142,10 +149,11 @@ jobs:
     displayName: 'List install files'
 
   - script: $(INSTALL_DIR)/deployment_tools/inference_engine/samples/cpp/build_samples.sh
+>>>>>>> upstream/master
     workingDirectory: $(BUILD_SAMPLES_DIR)
     displayName: 'Build cpp samples'
 
-  - script: $(INSTALL_DIR)/deployment_tools/inference_engine/samples/c/build_samples.sh
+  - script: $(INSTALL_DIR)/samples/c/build_samples.sh
     workingDirectory: $(BUILD_SAMPLES_DIR)
     displayName: 'Build c samples'
 

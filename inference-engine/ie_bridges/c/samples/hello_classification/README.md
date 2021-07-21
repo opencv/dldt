@@ -72,7 +72,7 @@ The application outputs top-10 inference results.
 ```
 Top 10 results:
 
-Image C:\images\car.bmp
+Image /opt/intel/openvino/extras/open_model_zoo/demo/car.png
 
 classid probability
 ------- -----------

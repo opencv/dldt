@@ -37,6 +37,7 @@ void LayerTestsCommon::Run() {
 
     auto &s = Summary::getInstance();
     s.setDeviceName(targetDevice);
+    configuration.insert({"DUMP_CONSTANT_NODES", CONFIG_VALUE(YES)});
 
     if (FuncTestUtils::SkipTestsConfig::currentTestIsDisabled()) {
         s.updateOPsStats(function, PassRate::Statuses::SKIPPED);

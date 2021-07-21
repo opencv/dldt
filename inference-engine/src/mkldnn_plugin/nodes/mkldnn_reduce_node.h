@@ -89,14 +89,18 @@ private:
     inline void reduce_ref(const float *in_ptr, float *out_ptr);
     void reduce_ref_process(const float *in_ptr, float *out_ptr, float init_value, std::function<float(float, float)> func);
     inline void reduce_ref_map(float *out_ptr, size_t work_amount_dst, size_t reduced_dims_work_amount);
+    void nspc2ncsp(uint8_t *proc_ptr, uint8_t *out_ptr);
+    void blocked2ncsp(uint8_t *proc_ptr, uint8_t *out_ptr);
 
     size_t blk_size;
     size_t dims_size;
     static const size_t REDUCE_DATA = 0;
     static const size_t REDUCE_INDEXES = 1;
-    bool planar_layout = true;
     bool jit_mode = true;
     bool keep_dims = true;
+    bool planar_layout = true;
+    bool is_nspc = false;
+    bool is_hybrid_layout = false;
     bool ReduceN, ReduceC, ReduceD, ReduceH, ReduceW;
     size_t IB, IC, ID, IH, IW;
     size_t OB, OC, OD, OH, OW;

@@ -70,6 +70,20 @@ protected:
 
         selectedType = getPrimitiveType() + "_" + (inPrc == Precision::BOOL ? "I8" : inPrc.name());
 
+        // hybrid layouts
+        if (inFmts.size() != 0 && outFmts.size() == 0) {
+            size_t outShapeSize = inputShape.size() - axes.size();
+            if (outShapeSize == 1) {
+                outFmts.push_back(x);
+            } else if (outShapeSize == 2) {
+                outFmts.push_back(nc);
+            } else if (outShapeSize == 3) {
+                outFmts.push_back(tnc);
+            } else if (outShapeSize == 4) {
+                outFmts.push_back(nchw);
+            }
+        }
+
         reduce->get_rt_info() = getCPUInfo();
 
         const ngraph::ResultVector results{std::make_shared<ngraph::opset3::Result>(reduce)};
@@ -141,9 +155,9 @@ std::vector<CommonTestUtils::OpType> opTypes = {
 };
 
 const std::vector<ngraph::helpers::ReductionType> reductionTypes = {
-//        ngraph::helpers::ReductionType::Mean, //optimized out during the graph transformations
-//        ngraph::helpers::ReductionType::Max, //optimized out during the graph transformations
-//        ngraph::helpers::ReductionType::Sum, //optimized out during the graph transformations
+        ngraph::helpers::ReductionType::Mean,
+        ngraph::helpers::ReductionType::Max,
+        ngraph::helpers::ReductionType::Sum,
         ngraph::helpers::ReductionType::Min,
         ngraph::helpers::ReductionType::Prod,
         ngraph::helpers::ReductionType::L1,
@@ -162,15 +176,27 @@ const std::vector<std::vector<size_t>> inputShapes = {
 
 std::vector<CPUSpecificParams> cpuParams_4D = {
         CPUSpecificParams({nChw16c}, {nChw16c}, {}, {}),
-        CPUSpecificParams({nchw}, {nchw}, {}, {})
+        CPUSpecificParams({nchw}, {nchw}, {}, {}),
+        CPUSpecificParams({nhwc}, {nhwc}, {}, {})
 };
 
 std::vector<CPUSpecificParams> cpuParams_5D = {
         CPUSpecificParams({nCdhw16c}, {nCdhw16c}, {}, {}),
-        CPUSpecificParams({ncdhw}, {ncdhw}, {}, {})
+        CPUSpecificParams({ncdhw}, {ncdhw}, {}, {}),
+        CPUSpecificParams({ndhwc}, {ndhwc}, {}, {})
 };
 
-const auto paramsOneAxis = ::testing::Combine(
+std::vector<CPUSpecificParams> cpuParams_HybridLayout_4D = {
+        CPUSpecificParams({nChw16c}, {}, {}, {}),
+        CPUSpecificParams({nhwc}, {}, {}, {})
+};
+
+std::vector<CPUSpecificParams> cpuParams_HybridLayout_5D = {
+        CPUSpecificParams({nCdhw16c}, {}, {}, {}),
+        CPUSpecificParams({ndhwc}, {}, {}, {})
+};
+
+const auto params_OneAxis = testing::Combine(
         testing::Combine(
             testing::ValuesIn(axes),
             testing::ValuesIn(opTypes),
@@ -181,34 +207,6 @@ const auto paramsOneAxis = ::testing::Combine(
             testing::Values(InferenceEngine::Precision::UNSPECIFIED),
             testing::Values(InferenceEngine::Layout::ANY),
             testing::ValuesIn(inputShapes),
-            testing::Values(CommonTestUtils::DEVICE_CPU)),
-        testing::Values(emptyCPUSpec));
-
-const auto paramsOneAxisLogical = testing::Combine(
-        testing::Combine(
-            testing::ValuesIn(axes),
-            testing::ValuesIn(opTypes),
-            testing::ValuesIn(keepDims),
-            testing::ValuesIn(reductionLogicalTypes),
-            testing::Values(InferenceEngine::Precision::BOOL),
-            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
-            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
-            testing::Values(InferenceEngine::Layout::ANY),
-            testing::ValuesIn(inputShapes),
-            testing::Values(CommonTestUtils::DEVICE_CPU)),
-        testing::Values(emptyCPUSpec));
-
-const auto params_MultiAxis = testing::Combine(
-        testing::Combine(
-            testing::ValuesIn(axesND),
-            testing::Values(opTypes[1]),
-            testing::Values(false),
-            testing::ValuesIn(reductionTypes),
-            testing::ValuesIn(inpOutPrc),
-            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
-            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
-            testing::Values(InferenceEngine::Layout::ANY),
-            testing::Values(std::vector<size_t>{2, 9, 2, 9}),
             testing::Values(CommonTestUtils::DEVICE_CPU)),
         testing::Values(emptyCPUSpec));
 
@@ -240,21 +238,85 @@ const auto params_MultiAxis_5D = testing::Combine(
                 testing::Values(CommonTestUtils::DEVICE_CPU)),
         testing::ValuesIn(filterCPUSpecificParams(cpuParams_5D)));
 
-const auto params_MultiAxisLogical = testing::Combine(
+const auto params_MultiAxis_4D_Hybrid = testing::Combine(
         testing::Combine(
             testing::ValuesIn(axesND),
             testing::Values(opTypes[1]),
             testing::Values(false),
+            testing::ValuesIn(reductionTypes),
+            testing::ValuesIn(inpOutPrc),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Layout::ANY),
+            testing::Values(std::vector<size_t>{2, 19, 2, 9}),
+            testing::Values(CommonTestUtils::DEVICE_CPU)),
+        testing::ValuesIn(filterCPUSpecificParams(cpuParams_HybridLayout_4D)));
+
+const auto params_MultiAxis_5D_Hybrid = testing::Combine(
+        testing::Combine(
+            testing::ValuesIn(axesND),
+            testing::Values(opTypes[1]),
+            testing::Values(false),
+            testing::ValuesIn(reductionTypes),
+            testing::ValuesIn(inpOutPrc),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Layout::ANY),
+            testing::Values(std::vector<size_t>{2, 19, 7, 2, 9}),
+            testing::Values(CommonTestUtils::DEVICE_CPU)),
+        testing::ValuesIn(filterCPUSpecificParams(cpuParams_HybridLayout_5D)));
+
+INSTANTIATE_TEST_SUITE_P(
+        smoke_Reduce_OneAxis_CPU,
+        ReduceCPULayerTest,
+        params_OneAxis,
+        ReduceCPULayerTest::getTestCaseName
+);
+
+INSTANTIATE_TEST_SUITE_P(
+        smoke_Reduce_MultiAxis_4D_CPU,
+        ReduceCPULayerTest,
+        params_MultiAxis_4D,
+        ReduceCPULayerTest::getTestCaseName
+);
+
+INSTANTIATE_TEST_SUITE_P(
+        smoke_Reduce_MultiAxis_5D_CPU,
+        ReduceCPULayerTest,
+        params_MultiAxis_5D,
+        ReduceCPULayerTest::getTestCaseName
+);
+
+INSTANTIATE_TEST_SUITE_P(
+        smoke_Reduce_MultiAxis_4D_Hybrid_CPU,
+        ReduceCPULayerTest,
+        params_MultiAxis_4D_Hybrid,
+        ReduceCPULayerTest::getTestCaseName
+);
+
+INSTANTIATE_TEST_SUITE_P(
+        smoke_Reduce_MultiAxis_5D_Hybrid_CPU,
+        ReduceCPULayerTest,
+        params_MultiAxis_5D_Hybrid,
+        ReduceCPULayerTest::getTestCaseName
+);
+
+/* ================================ Logical ================================ */
+const auto params_OneAxis_Logical = testing::Combine(
+        testing::Combine(
+            testing::ValuesIn(axes),
+            testing::ValuesIn(opTypes),
+            testing::ValuesIn(keepDims),
             testing::ValuesIn(reductionLogicalTypes),
             testing::Values(InferenceEngine::Precision::BOOL),
             testing::Values(InferenceEngine::Precision::UNSPECIFIED),
             testing::Values(InferenceEngine::Precision::UNSPECIFIED),
             testing::Values(InferenceEngine::Layout::ANY),
-            testing::Values(std::vector<size_t>{2, 9, 2, 9}),
+            testing::ValuesIn(inputShapes),
             testing::Values(CommonTestUtils::DEVICE_CPU)),
         testing::Values(emptyCPUSpec));
 
-const auto params_MultiAxisLogical4D = testing::Combine(
+const auto params_MultiAxis_4D_Logical = testing::Combine(
         testing::Combine(
                 testing::ValuesIn(axesND),
                 testing::Values(opTypes[1]),
@@ -268,7 +330,7 @@ const auto params_MultiAxisLogical4D = testing::Combine(
                 testing::Values(CommonTestUtils::DEVICE_CPU)),
         testing::ValuesIn(filterCPUSpecificParams(cpuParams_4D)));
 
-const auto params_MultiAxisLogical5D = testing::Combine(
+const auto params_MultiAxis_5D_Logical = testing::Combine(
         testing::Combine(
                 testing::ValuesIn(axesND),
                 testing::Values(opTypes[1]),
@@ -282,59 +344,66 @@ const auto params_MultiAxisLogical5D = testing::Combine(
                 testing::Values(CommonTestUtils::DEVICE_CPU)),
         testing::ValuesIn(filterCPUSpecificParams(cpuParams_5D)));
 
+const auto params_MultiAxis_4D_Hybrid_Logical = testing::Combine(
+        testing::Combine(
+            testing::ValuesIn(axesND),
+            testing::Values(opTypes[1]),
+            testing::Values(false),
+            testing::ValuesIn(reductionLogicalTypes),
+            testing::Values(InferenceEngine::Precision::BOOL),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Layout::ANY),
+            testing::Values(std::vector<size_t>{2, 19, 2, 9}),
+            testing::Values(CommonTestUtils::DEVICE_CPU)),
+        testing::ValuesIn(filterCPUSpecificParams(cpuParams_HybridLayout_4D)));
+
+const auto params_MultiAxis_5D_Hybrid_Logical = testing::Combine(
+        testing::Combine(
+            testing::ValuesIn(axesND),
+            testing::Values(opTypes[1]),
+            testing::Values(false),
+            testing::ValuesIn(reductionLogicalTypes),
+            testing::Values(InferenceEngine::Precision::BOOL),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Precision::UNSPECIFIED),
+            testing::Values(InferenceEngine::Layout::ANY),
+            testing::Values(std::vector<size_t>{2, 19, 7, 2, 9}),
+            testing::Values(CommonTestUtils::DEVICE_CPU)),
+        testing::ValuesIn(filterCPUSpecificParams(cpuParams_HybridLayout_5D)));
+
 INSTANTIATE_TEST_SUITE_P(
-        smoke_ReduceOneAxis_CPU,
+        smoke_Reduce_OneAxis_Logical_CPU,
         ReduceCPULayerTest,
-        paramsOneAxis,
+        params_OneAxis_Logical,
         ReduceCPULayerTest::getTestCaseName
 );
 
 INSTANTIATE_TEST_SUITE_P(
-        smoke_ReduceLogicalOneAxis_CPU,
+        smoke_Reduce_MultiAxis_4D_Logical_CPU,
         ReduceCPULayerTest,
-        paramsOneAxisLogical,
+        params_MultiAxis_4D_Logical,
         ReduceCPULayerTest::getTestCaseName
 );
 
 INSTANTIATE_TEST_SUITE_P(
-        smoke_Reduce_ReductionTypes_CPU,
+        smoke_Reduce_MultiAxis_5D_Logical_CPU,
         ReduceCPULayerTest,
-        params_MultiAxis,
+        params_MultiAxis_5D_Logical,
         ReduceCPULayerTest::getTestCaseName
 );
 
 INSTANTIATE_TEST_SUITE_P(
-        smoke_Reduce_ReductionTypes4D_CPU,
+        smoke_Reduce_MultiAxis_4D_Hybrid_Logical_CPU,
         ReduceCPULayerTest,
-        params_MultiAxis_4D,
+        params_MultiAxis_4D_Hybrid_Logical,
         ReduceCPULayerTest::getTestCaseName
 );
 
 INSTANTIATE_TEST_SUITE_P(
-        smoke_Reduce_ReductionTypes5D_CPU,
+        smoke_Reduce_MultiAxis_5D_Hybrid_Logical_CPU,
         ReduceCPULayerTest,
-        params_MultiAxis_5D,
-        ReduceCPULayerTest::getTestCaseName
-);
-
-INSTANTIATE_TEST_SUITE_P(
-        smoke_ReduceLogical_ReductionTypes_CPU,
-        ReduceCPULayerTest,
-        params_MultiAxisLogical,
-        ReduceCPULayerTest::getTestCaseName
-);
-
-INSTANTIATE_TEST_SUITE_P(
-        smoke_ReduceLogical4D_ReductionTypes_CPU,
-        ReduceCPULayerTest,
-        params_MultiAxisLogical4D,
-        ReduceCPULayerTest::getTestCaseName
-);
-
-INSTANTIATE_TEST_SUITE_P(
-        smoke_ReduceLogical5D_ReductionTypes_CPU,
-        ReduceCPULayerTest,
-        params_MultiAxisLogical5D,
+        params_MultiAxis_5D_Hybrid_Logical,
         ReduceCPULayerTest::getTestCaseName
 );
 } // namespace

@@ -54,6 +54,8 @@ void ReduceMeanTransformation::Run() {
 }
 
 TEST_P(ReduceMeanTransformation, CompareWithRefImpl) {
+    SKIP_IF_CURRENT_TEST_IS_DISABLED()
+
     Run();
 };
 

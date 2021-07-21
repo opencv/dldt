@@ -57,6 +57,7 @@
 #include <transformations/op_conversions/convert_previous_nms_to_nms_5.hpp>
 #include <transformations/op_conversions/convert_nms_to_nms_ie_internal.hpp>
 #include <transformations/op_conversions/convert_deformable_conv_v8_to_v1.hpp>
+#include <transformations/op_conversions/convert_reduce_to_pooling.hpp>
 #include <transformations/convert_precision.hpp>
 #include <transformations/init_node_info.hpp>
 #include <transformations/rt_info/fused_names_attribute.hpp>
@@ -293,6 +294,9 @@ static void Transformation(CNNNetwork& clonedNetwork, const Config& conf) {
     pass_config->disable<ngraph::pass::SimplifyCTCGreedyDecoderSeqLen>();
     pass_config->disable<ngraph::pass::ConvertGather7ToGather1>();
     pass_config->disable<ngraph::pass::ConvertDeformableConv8To1>();
+    pass_config->disable<ngraph::pass::ConvertReduceMeanToPooling>();
+    pass_config->disable<ngraph::pass::ConvertReduceMaxToPooling>();
+    pass_config->disable<ngraph::pass::ConvertReduceSumToPooling>();
 
     pass_config->enable<ngraph::pass::ConvertInterpolate1ToInterpolate4>();
     pass_config->enable<ngraph::pass::ConvertGather1ToGather7>();

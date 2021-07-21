@@ -86,7 +86,9 @@ struct jit_uni_reduce_kernel_f32 : public jit_uni_reduce_kernel, public jit_gene
     }
 
     void generate() override {
-        exp_injector.reset(new jit_uni_eltwise_injector_f32<isa>(this, alg_kind::eltwise_exp, 0.f, 0.f, 1));
+        if (jcp_.reduce_mode == ReduceLogSumExp) {
+            exp_injector.reset(new jit_uni_eltwise_injector_f32<isa>(this, alg_kind::eltwise_exp, 0.f, 0.f, 1));
+        }
 
         if (!mayiuse(avx512_core_bf16) && mayiuse(avx512_core))
             emu_vcvtneps2bf16.reset(new jit_emu_vcvtneps2bf16(this, isa, nullptr));
@@ -326,7 +328,7 @@ private:
             }
             // store
             // store after horizontal calculation and calculation with loaded original ptr[reg_dst]
-            load_embedded_horiz_reduce_store(vmm_dst, jcp_.dst_dt);
+            horiz_reduce_store(vmm_dst, jcp_.dst_dt, true);
         }
 
         L(reduce_main_end_label);
@@ -715,15 +717,15 @@ private:
         }
     }
 
-    inline void load_embedded_horiz_reduce_store(Vmm vmm_dst, memory::data_type dst_dt) {
+    inline void horiz_reduce_store(Vmm vmm_dst, memory::data_type dst_dt, bool load_embedded = false) {
         if (isa == cpu::x64::sse41) {
-            load_embedded_horiz_store(vmm_dst, dst_dt);
+            horiz_store(vmm_dst, dst_dt, load_embedded);
         } else if (isa == cpu::x64::avx2) {
             Xbyak::Ymm ymm_dst = Xbyak::Ymm(vmm_dst.getIdx());
             vextractf128(xmm_aux1, ymm_dst, 0);
             vextractf128(xmm_aux2, ymm_dst, 1);
             horiz_ps(xmm_aux1, xmm_aux2);
-            load_embedded_horiz_store(xmm_aux1, dst_dt);
+            horiz_store(xmm_aux1, dst_dt, load_embedded);
         } else {
             Xbyak::Zmm zmm_dst = Xbyak::Zmm(vmm_dst.getIdx());
             vextractf32x4(xmm_aux1, zmm_dst, 0);
@@ -733,45 +735,20 @@ private:
             vextractf32x4(xmm_aux3, zmm_dst, 3);
             horiz_ps(xmm_aux2, xmm_aux3);
             horiz_ps(xmm_aux1, xmm_aux2);
-            load_embedded_horiz_store(xmm_aux1, dst_dt);
+            horiz_store(xmm_aux1, dst_dt, load_embedded);
         }
     }
 
-    inline void load_embedded_horiz_store(Xbyak::Xmm xmm_dst, memory::data_type dst_dt) {
+    inline void horiz_store(Xbyak::Xmm xmm_dst, memory::data_type dst_dt, bool load_embedded) {
         movshdup(xmm_aux3, xmm_dst); // dst:1,2,3,4; aux3:2,2,4,4
         horiz_ps(xmm_dst, xmm_aux3); // dst:f(1,2),f(2,2),f(3,4),f(4,4)
         movhlps(xmm_aux3, xmm_dst);  // aux3:f(3,4),f(4,4),4,4
         horiz_ps(xmm_dst, xmm_aux3); // dst:f(1,2,3,4),...
-        load_scalar(xmm_aux3, ptr[reg_dst], dst_dt);
-
-        switch (dst_dt) {
-            case memory::data_type::f32:
-            case memory::data_type::bf16:
-                horiz_ps(xmm_dst, xmm_aux3);
-                store_scalar(ptr[reg_dst], xmm_dst, dst_dt);
-                break;
-            case memory::data_type::s32:
-                horiz_ps(xmm_dst, xmm_aux3);
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                movss(ptr[reg_dst], xmm_dst);
-                break;
-            case memory::data_type::u8:
-                horiz_ps(xmm_dst, xmm_aux3);
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                uni_vpackusdw(xmm_dst, xmm_dst, xmm_dst);
-                uni_vpackuswb(xmm_dst, xmm_dst, xmm_dst);
-                pextrb(ptr[reg_dst], xmm_dst, 0);
-                break;
-            case memory::data_type::s8:
-                horiz_ps(xmm_dst, xmm_aux3);
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                uni_vpackssdw(xmm_dst, xmm_dst, xmm_dst);
-                uni_vpacksswb(xmm_dst, xmm_dst, xmm_dst);
-                pextrb(ptr[reg_dst], xmm_dst, 0);
-                break;
-            default:
-                assert(!"unknown dst_dt");
+        if (load_embedded) {
+            load_scalar(xmm_aux3, ptr[reg_dst], dst_dt);
+            horiz_ps(xmm_dst, xmm_aux3);
         }
+        store_scalar(ptr[reg_dst], xmm_dst, dst_dt);
     }
 
     inline void horiz_ps(const Xmm& xmm, const Operand& op) {
@@ -846,7 +823,9 @@ struct jit_uni_reduce_post_kernel_f32 : public jit_uni_reduce_post_kernel, publi
     }
 
     void generate() override {
-        log_injector.reset(new jit_uni_eltwise_injector_f32<isa>(this, alg_kind::eltwise_log, 0.f, 0.f, 1.f));
+        if (jcp_.reduce_mode == ReduceLogSum || jcp_.reduce_mode == ReduceLogSumExp) {
+            log_injector.reset(new jit_uni_eltwise_injector_f32<isa>(this, alg_kind::eltwise_log, 0.f, 0.f, 1.f));
+        }
 
         if (!mayiuse(avx512_core_bf16) && mayiuse(avx512_core))
             emu_vcvtneps2bf16.reset(new jit_emu_vcvtneps2bf16(this, isa, nullptr));
@@ -937,7 +916,7 @@ private:
                 // reduce and store
                 horiz_reduce_store(vmm_dst, jcp_.dst_dt);
                 if (isa == cpu::x64::sse41)
-                    load_embedded_horiz_reduce_store(vmm_dst_aux, jcp_.dst_dt);
+                    horiz_reduce_store(vmm_dst_aux, jcp_.dst_dt, true);
 
                 add(reg_dst, step * jcp_.dst_data_size);
                 sub(reg_work_amount, step);
@@ -1182,15 +1161,15 @@ private:
         }
     }
 
-    inline void horiz_reduce_store(Vmm vmm_dst, memory::data_type dst_dt) {
+    inline void horiz_reduce_store(Vmm vmm_dst, memory::data_type dst_dt, bool load_embedded = false) {
         if (isa == cpu::x64::sse41) {
-            horize_store(vmm_dst, dst_dt);
+            horiz_store(vmm_dst, dst_dt, load_embedded);
         } else if (isa == cpu::x64::avx2) {
             Xbyak::Ymm ymm_dst = Xbyak::Ymm(vmm_dst.getIdx());
             vextractf128(xmm_aux1, ymm_dst, 0);
             vextractf128(xmm_aux2, ymm_dst, 1);
             horiz_ps(xmm_aux1, xmm_aux2);
-            horize_store(xmm_aux1, dst_dt);
+            horiz_store(xmm_aux1, dst_dt, load_embedded);
         } else {
             Xbyak::Zmm zmm_dst = Xbyak::Zmm(vmm_dst.getIdx());
             vextractf32x4(xmm_aux1, zmm_dst, 0);
@@ -1200,101 +1179,20 @@ private:
             vextractf32x4(xmm_aux3, zmm_dst, 3);
             horiz_ps(xmm_aux2, xmm_aux3);
             horiz_ps(xmm_aux1, xmm_aux2);
-            horize_store(xmm_aux1, dst_dt);
+            horiz_store(xmm_aux1, dst_dt, load_embedded);
         }
     }
 
-    inline void horize_store(Xbyak::Xmm xmm_dst, memory::data_type dst_dt) {
+    inline void horiz_store(Xbyak::Xmm xmm_dst, memory::data_type dst_dt, bool load_embedded) {
         movshdup(xmm_aux3, xmm_dst); // dst:1,2,3,4; aux3:2,2,4,4
         horiz_ps(xmm_dst, xmm_aux3); // dst:f(1,2),f(2,2),f(3,4),f(4,4)
         movhlps(xmm_aux3, xmm_dst);  // aux3:f(3,4),f(4,4),4,4
         horiz_ps(xmm_dst, xmm_aux3); // dst:f(1,2,3,4),...
-        switch (dst_dt) {
-            case memory::data_type::f32:
-                movss(ptr[reg_dst], xmm_dst);
-                break;
-            case memory::data_type::bf16:
-                uni_vpsrld(xmm_dst, xmm_dst, 16);
-                pextrw(ptr[reg_dst], xmm_dst, 0x0);
-                break;
-            case memory::data_type::s32:
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                movss(ptr[reg_dst], xmm_dst);
-                break;
-            case memory::data_type::u8:
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                uni_vpackusdw(xmm_dst, xmm_dst, xmm_dst);
-                uni_vpackuswb(xmm_dst, xmm_dst, xmm_dst);
-                pextrb(ptr[reg_dst], xmm_dst, 0);
-                break;
-            case memory::data_type::s8:
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                uni_vpackssdw(xmm_dst, xmm_dst, xmm_dst);
-                uni_vpacksswb(xmm_dst, xmm_dst, xmm_dst);
-                pextrb(ptr[reg_dst], xmm_dst, 0);
-                break;
-            default:
-                assert(!"unknown dst_dt");
+        if (load_embedded) {
+            load_scalar(xmm_aux3, ptr[reg_dst], dst_dt);
+            horiz_ps(xmm_dst, xmm_aux3);
         }
-    }
-
-    inline void load_embedded_horiz_reduce_store(Vmm vmm_dst, memory::data_type dst_dt) {
-        if (isa == cpu::x64::sse41) {
-            load_embedded_horiz_store(vmm_dst, dst_dt);
-        } else if (isa == cpu::x64::avx2) {
-            Xbyak::Ymm ymm_dst = Xbyak::Ymm(vmm_dst.getIdx());
-            vextractf128(xmm_aux1, ymm_dst, 0);
-            vextractf128(xmm_aux2, ymm_dst, 1);
-            horiz_ps(xmm_aux1, xmm_aux2);
-            load_embedded_horiz_store(xmm_aux1, dst_dt);
-        } else {
-            Xbyak::Zmm zmm_dst = Xbyak::Zmm(vmm_dst.getIdx());
-            vextractf32x4(xmm_aux1, zmm_dst, 0);
-            vextractf32x4(xmm_aux2, zmm_dst, 1);
-            horiz_ps(xmm_aux1, xmm_aux2);
-            vextractf32x4(xmm_aux2, zmm_dst, 2);
-            vextractf32x4(xmm_aux3, zmm_dst, 3);
-            horiz_ps(xmm_aux2, xmm_aux3);
-            horiz_ps(xmm_aux1, xmm_aux2);
-            load_embedded_horiz_store(xmm_aux1, dst_dt);
-        }
-    }
-
-    inline void load_embedded_horiz_store(Xbyak::Xmm xmm_dst, memory::data_type dst_dt) {
-        movshdup(xmm_aux3, xmm_dst); // dst:1,2,3,4; aux3:2,2,4,4
-        horiz_ps(xmm_dst, xmm_aux3); // dst:f(1,2),f(2,2),f(3,4),f(4,4)
-        movhlps(xmm_aux3, xmm_dst);  // aux3:f(3,4),f(4,4),4,4
-        horiz_ps(xmm_dst, xmm_aux3); // dst:f(1,2,3,4),...
-        load_scalar(xmm_aux3, ptr[reg_dst], dst_dt);
-
-        switch (dst_dt) {
-            case memory::data_type::f32:
-            case memory::data_type::bf16:
-                horiz_ps(xmm_dst, xmm_aux3);
-                store_scalar(ptr[reg_dst], xmm_dst, dst_dt);
-                break;
-            case memory::data_type::s32:
-                horiz_ps(xmm_dst, xmm_aux3);
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                movss(ptr[reg_dst], xmm_dst);
-                break;
-            case memory::data_type::u8:
-                horiz_ps(xmm_dst, xmm_aux3);
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                uni_vpackusdw(xmm_dst, xmm_dst, xmm_dst);
-                uni_vpackuswb(xmm_dst, xmm_dst, xmm_dst);
-                pextrb(ptr[reg_dst], xmm_dst, 0);
-                break;
-            case memory::data_type::s8:
-                horiz_ps(xmm_dst, xmm_aux3);
-                uni_vcvtps2dq(xmm_dst, xmm_dst);
-                uni_vpackssdw(xmm_dst, xmm_dst, xmm_dst);
-                uni_vpacksswb(xmm_dst, xmm_dst, xmm_dst);
-                pextrb(ptr[reg_dst], xmm_dst, 0);
-                break;
-            default:
-                assert(!"unknown dst_dt");
-        }
+        store_scalar(ptr[reg_dst], xmm_dst, dst_dt);
     }
 
     inline void horiz_ps(const Xmm& xmm, const Operand& op) {
@@ -1490,18 +1388,43 @@ void MKLDNNReduceNode::initSupportedPrimitiveDescriptors() {
 
         pushDesc(MKLDNNMemory::GetPlainFormat(memory::dims(getParentEdgeAt(REDUCE_DATA)->getDims().ndims())),
              MKLDNNMemory::GetPlainFormat(memory::dims(getChildEdgeAt(0)->getDims().ndims())), inputDataType, outputDataType, impl_type);
-        if (keep_dims) {
-            if (getParentEdgeAt(REDUCE_DATA)->getDims().ndims() == 4 && getParentEdgeAt(REDUCE_DATA)->getDims().ToSizeVector()[1] > 1) {
-                if (mayiuse(cpu::x64::avx512_common)) {
-                    pushDesc(memory::format_tag::nChw16c, memory::format_tag::nChw16c, inputDataType, outputDataType, impl_type);
-                } else if (mayiuse(cpu::x64::avx2) || mayiuse(cpu::x64::sse41)) {
-                    pushDesc(memory::format_tag::nChw8c, memory::format_tag::nChw8c, inputDataType, outputDataType, impl_type);
+        if (getParentEdgeAt(REDUCE_DATA)->getDims().ToSizeVector()[1] > 1) {
+            if (keep_dims) {
+                if (getParentEdgeAt(REDUCE_DATA)->getDims().ndims() == 4) {
+                    if (mayiuse(cpu::x64::avx512_common)) {
+                        pushDesc(memory::format_tag::nhwc, memory::format_tag::nhwc, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nChw16c, memory::format_tag::nChw16c, inputDataType, outputDataType, impl_type);
+                    } else if (mayiuse(cpu::x64::avx2) || mayiuse(cpu::x64::sse41)) {
+                        pushDesc(memory::format_tag::nhwc, memory::format_tag::nhwc, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nChw8c, memory::format_tag::nChw8c, inputDataType, outputDataType, impl_type);
+                    }
+                } else if (getParentEdgeAt(REDUCE_DATA)->getDims().ndims() == 5) {
+                    if (mayiuse(cpu::x64::avx512_common)) {
+                        pushDesc(memory::format_tag::ndhwc, memory::format_tag::ndhwc, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nCdhw16c, memory::format_tag::nCdhw16c, inputDataType, outputDataType, impl_type);
+                    } else if (mayiuse(cpu::x64::avx2) || mayiuse(cpu::x64::sse41)) {
+                        pushDesc(memory::format_tag::ndhwc, memory::format_tag::ndhwc, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nCdhw8c, memory::format_tag::nCdhw8c, inputDataType, outputDataType, impl_type);
+                    }
                 }
-            } else if (getParentEdgeAt(REDUCE_DATA)->getDims().ndims() == 5 && getParentEdgeAt(REDUCE_DATA)->getDims().ToSizeVector()[1] > 1) {
-                if (mayiuse(cpu::x64::avx512_common)) {
-                    pushDesc(memory::format_tag::nCdhw16c, memory::format_tag::nCdhw16c, inputDataType, outputDataType, impl_type);
-                } else if (mayiuse(cpu::x64::avx2) || mayiuse(cpu::x64::sse41)) {
-                    pushDesc(memory::format_tag::nCdhw8c, memory::format_tag::nCdhw8c, inputDataType, outputDataType, impl_type);
+            } else {
+                auto planar_format = MKLDNNMemory::GetPlainFormat(memory::dims(getChildEdgeAt(0)->getDims().ndims()));
+                if (getParentEdgeAt(REDUCE_DATA)->getDims().ndims() == 4) {
+                    if (mayiuse(cpu::x64::avx512_common)) {
+                        pushDesc(memory::format_tag::nhwc, planar_format, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nChw16c, planar_format, inputDataType, outputDataType, impl_type);
+                    } else if (mayiuse(cpu::x64::avx2) || mayiuse(cpu::x64::sse41)) {
+                        pushDesc(memory::format_tag::nhwc, planar_format, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nChw8c, planar_format, inputDataType, outputDataType, impl_type);
+                    }
+                } else if (getParentEdgeAt(REDUCE_DATA)->getDims().ndims() == 5) {
+                    if (mayiuse(cpu::x64::avx512_common)) {
+                        pushDesc(memory::format_tag::ndhwc, planar_format, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nCdhw16c, planar_format, inputDataType, outputDataType, impl_type);
+                    } else if (mayiuse(cpu::x64::avx2) || mayiuse(cpu::x64::sse41)) {
+                        pushDesc(memory::format_tag::ndhwc, planar_format, inputDataType, outputDataType, impl_type);
+                        pushDesc(memory::format_tag::nCdhw8c, planar_format, inputDataType, outputDataType, impl_type);
+                    }
                 }
             }
         }
@@ -1524,7 +1447,26 @@ void MKLDNNReduceNode::createPrimitive() {
         IE_THROW() << errorPrefix << " has nullable preferable primitive descriptor";
 
     auto selectedPD = getSelectedPrimitiveDescriptor();
-    planar_layout = getParentEdgeAt(REDUCE_DATA)->getMemory().GetDesc().isPlainFormat();
+    Layout selected_layout = selectedPD->getConfig().inConfs[REDUCE_DATA].desc.getLayout();
+    is_nspc = false;
+    if (MKLDNNMemory::GetPlainLayout(getParentEdgeAt(REDUCE_DATA)->getDims()) == selected_layout) {
+        planar_layout = true;
+    } else if ((selected_layout == NHWC) || (selected_layout == NDHWC)) {
+        planar_layout = true;
+        is_nspc = true;
+    } else {
+        planar_layout = false;
+    }
+
+    // hybrid layout: nspc/blocked layout for input and ncsp for output
+    // !keep_dims is needed to avoid hybrid layout for cases eg. (A, B, C, D) reduce to (A, 1, 1, 1)
+    if (!keep_dims && ((planar_layout && is_nspc) || !planar_layout)) {
+        is_hybrid_layout = false;
+        Layout output_layout = selectedPD->getConfig().outConfs[REDUCE_DATA].desc.getLayout();
+        if (MKLDNNMemory::GetPlainLayout(getChildEdgeAt(REDUCE_DATA)->getDims()) == output_layout) {
+            is_hybrid_layout = true;
+        }
+    }
 
     auto jcp = jit_reduce_config_params();
     jcp.src_dt = MKLDNNExtensionUtils::IEPrecisionToDataType(selectedPD->getConfig().inConfs[REDUCE_DATA].desc.getPrecision());
@@ -1587,6 +1529,18 @@ void MKLDNNReduceNode::execute(mkldnn::stream strm) {
             SET_DST_DIM_VALUE(1, process_dst_dims[0], 1, 1, 1);
         }
 
+        // Reducing a dimesion in npsc layout can be treated as reducing another dimension in ncps layout,
+        // eg. reducing C in npsc can be treated as reducing W in ncps layout, so that the routine reduce_PLN can be reused.
+        // nspc -- ncps
+        //    D -- C
+        //    H -- D
+        //    W -- H
+        //    C -- W
+        if (is_nspc) {
+            size_t ITmp = IC; IC = ID; ID = IH; IH = IW; IW = ITmp;
+            size_t OTmp = OC; OC = OD; OD = OH; OH = OW; OW = OTmp;
+        }
+
         ReduceN = IB != OB && OB == 1;
         ReduceC = IC != OC && OC == 1;
         ReduceD = ID != OD && OD == 1;
@@ -1596,6 +1550,13 @@ void MKLDNNReduceNode::execute(mkldnn::stream strm) {
 
     const uint8_t *src_data = reinterpret_cast<const uint8_t *>(srcMemPtr->GetPtr());
     uint8_t *dst_data = reinterpret_cast<uint8_t *>(dstMemPtr->GetPtr());
+    if (is_hybrid_layout) {
+        if (!is_nspc) {
+            dst_size = dst_size / OC * div_up(OC, blk_size) * blk_size;
+        }
+        dst_data = reinterpret_cast<uint8_t *>(std::malloc(dst_size));
+    }
+
     if (jit_mode) {
         reduce_type(src_data, dst_data, dst_size);
     } else {
@@ -1621,6 +1582,153 @@ void MKLDNNReduceNode::reduce_type(const uint8_t *in_ptr, uint8_t *out_ptr, size
         } else {
             reduce_BLK(in_ptr, out_ptr);
         }
+    }
+
+    if (is_hybrid_layout) {
+        uint8_t *proc_ptr = out_ptr;
+        auto &dstMemPtr = getChildEdgeAt(0)->getMemoryPtr();
+        out_ptr = reinterpret_cast<uint8_t *>(dstMemPtr->GetPtr());
+        if (is_nspc) {
+            nspc2ncsp(proc_ptr, out_ptr);
+        } else {
+            blocked2ncsp(proc_ptr, out_ptr);
+        }
+
+        std::free(proc_ptr);
+    }
+}
+
+void MKLDNNReduceNode::nspc2ncsp(uint8_t *proc_ptr, uint8_t *out_ptr) {
+    // dimension reinterpret after nspc reusing routine reduce_PLN
+    // ncps -- nspc
+    //    C -- D
+    //    W -- C
+    //    H -- W
+    //    D -- H
+    if (is_nspc) {
+        size_t ITmp = ID; ID = IC; IC = IW; IW = IH; IH = ITmp;
+        size_t OTmp = OD; OD = OC; OC = OW; OW = OH; OH = OTmp;
+    }
+    const size_t DIM0 = OB;
+    const size_t DIM1 = OC;
+    const size_t DIM2 = OD;
+    const size_t DIM3 = OH;
+    const size_t DIM4 = OW;
+    const size_t stride1 = DIM2 * DIM3 * DIM4;
+    const size_t stride0 = stride1 * DIM1;
+
+    if (dst_data_size == 4) {
+        auto src_data = reinterpret_cast<const float *>(proc_ptr);
+        auto dst_data = reinterpret_cast<float *>(out_ptr);
+        parallel_for2d(DIM0, stride1, [&](size_t b, size_t j) {
+            auto src_off = b * stride0 + j * DIM1;
+            auto dst_off = b * stride0 + j;
+            for (size_t dim1 = 0; dim1 < DIM1; dim1++) {
+                dst_data[dst_off] = src_data[src_off];
+                src_off++;
+                dst_off += stride1;
+            }
+        });
+    } else if (dst_data_size == 2) {
+        auto src_data = reinterpret_cast<const uint16_t *>(proc_ptr);
+        auto dst_data = reinterpret_cast<uint16_t *>(out_ptr);
+        parallel_for2d(DIM0, stride1, [&](size_t b, size_t j) {
+            auto src_off = b * stride0 + j * DIM1;
+            auto dst_off = b * stride0 + j;
+            for (size_t dim1 = 0; dim1 < DIM1; dim1++) {
+                dst_data[dst_off] = src_data[src_off];
+                src_off++;
+                dst_off += stride1;
+            }
+        });
+    } else {
+        auto src_data = reinterpret_cast<const uint8_t *>(proc_ptr);
+        auto dst_data = reinterpret_cast<uint8_t *>(out_ptr);
+        parallel_for2d(DIM0, stride1, [&](size_t b, size_t j) {
+            auto src_off = b * stride0 + j * DIM1;
+            auto dst_off = b * stride0 + j;
+            for (size_t dim1 = 0; dim1 < DIM1; dim1++) {
+                dst_data[dst_off] = src_data[src_off];
+                src_off++;
+                dst_off += stride1;
+            }
+        });
+    }
+}
+
+void MKLDNNReduceNode::blocked2ncsp(uint8_t *proc_ptr, uint8_t *out_ptr) {
+    const size_t DIM0 = OB;
+    const size_t DIM1 = OC;
+    const size_t DIM2 = OD;
+    const size_t DIM3 = OH;
+    const size_t DIM4 = OW;
+    const size_t stride1 = DIM2 * DIM3 * DIM4;
+    const size_t src_stride0 = stride1 * div_up(OC, blk_size) * blk_size;
+    const size_t dst_stride0 = stride1 * DIM1;
+
+    if (dst_data_size == 4) {
+        auto src_data = reinterpret_cast<const float *>(proc_ptr);
+        auto dst_data = reinterpret_cast<float *>(out_ptr);
+        parallel_for2d(DIM0, stride1, [&](size_t b, size_t j) {
+            auto src_off = b * src_stride0 + j * blk_size;
+            auto dst_off = b * dst_stride0 + j;
+            for (size_t dim1 = 0; dim1 + blk_size <= DIM1; dim1 += blk_size) {
+                for (size_t k = 0; k < blk_size; k++) {
+                    dst_data[dst_off] = src_data[src_off];
+                    src_off++;
+                    dst_off += stride1;
+                }
+                src_off += (stride1 - 1) * blk_size;
+            }
+            size_t tail = DIM1 % blk_size;
+            for (size_t k = 0; k < tail; k++) {
+                dst_data[dst_off] = src_data[src_off];
+                src_off++;
+                dst_off += stride1;
+            }
+        });
+    } else if (dst_data_size == 2) {
+        auto src_data = reinterpret_cast<const uint16_t *>(proc_ptr);
+        auto dst_data = reinterpret_cast<uint16_t *>(out_ptr);
+        parallel_for2d(DIM0, stride1, [&](size_t b, size_t j) {
+            auto src_off = b * src_stride0 + j * blk_size;
+            auto dst_off = b * dst_stride0 + j;
+            for (size_t dim1 = 0; dim1 + blk_size <= DIM1; dim1 += blk_size) {
+                for (size_t k = 0; k < blk_size; k++) {
+                    dst_data[dst_off] = src_data[src_off];
+                    src_off++;
+                    dst_off += stride1;
+                }
+                src_off += (stride1 - 1) * blk_size;
+            }
+            size_t tail = DIM1 % blk_size;
+            for (size_t k = 0; k < tail; k++) {
+                dst_data[dst_off] = src_data[src_off];
+                src_off++;
+                dst_off += stride1;
+            }
+        });
+    } else {
+        auto src_data = reinterpret_cast<const uint8_t *>(proc_ptr);
+        auto dst_data = reinterpret_cast<uint8_t *>(out_ptr);
+        parallel_for2d(DIM0, stride1, [&](size_t b, size_t j) {
+            auto src_off = b * src_stride0 + j * blk_size;
+            auto dst_off = b * dst_stride0 + j;
+            for (size_t dim1 = 0; dim1 + blk_size <= DIM1; dim1 += blk_size) {
+                for (size_t k = 0; k < blk_size; k++) {
+                    dst_data[dst_off] = src_data[src_off];
+                    src_off++;
+                    dst_off += stride1;
+                }
+                src_off += (stride1 - 1) * blk_size;
+            }
+            size_t tail = DIM1 % blk_size;
+            for (size_t k = 0; k < tail; k++) {
+                dst_data[dst_off] = src_data[src_off];
+                src_off++;
+                dst_off += stride1;
+            }
+        });
     }
 }
 

@@ -77,18 +77,18 @@ python <path_to_sample>/speech_sample.py -h
 Usage message:
 
 ```
-usage: speech_sample.py [-h] (-m MODEL | -rg IMPORT_GNA_MODEL) -i INPUT       
+usage: speech_sample.py [-h] (-m MODEL | -rg IMPORT_GNA_MODEL) -i INPUT
                         [-o OUTPUT] [-r REFERENCE] [-d DEVICE]
                         [-bs BATCH_SIZE] [-qb QUANTIZATION_BITS]
                         [-wg EXPORT_GNA_MODEL] [-iname INPUT_LAYERS]
-                        [-oname OUTPUT_LAYERS]
+                        [-oname OUTPUT_LAYERS] [-sf SCALE_FACTOR]
 
 optional arguments:
   -m MODEL, --model MODEL
                         Path to an .xml file with a trained model (required if
                         -rg is missing).
   -rg IMPORT_GNA_MODEL, --import_gna_model IMPORT_GNA_MODEL
-                        Read GNA model from file using path/filename provided 
+                        Read GNA model from file using path/filename provided
                         (required if -m is missing).
 
 Options:
@@ -96,7 +96,8 @@ Options:
   -i INPUT, --input INPUT
                         Required. Path to an input file (.ark or .npz).
   -o OUTPUT, --output OUTPUT
-                        Optional. Output file name to save inference results (.ark or .npz).
+                        Optional. Output file name to save inference results
+                        (.ark or .npz).
   -r REFERENCE, --reference REFERENCE
                         Optional. Read reference score file and compare
                         scores.
@@ -125,6 +126,9 @@ Options:
                         separated with ",". Allows to change the order of
                         output layers for -o flag. Example:
                         Output1:port,Output2:port.
+  -sf SCALE_FACTOR, --scale_factor SCALE_FACTOR
+                        Optional. User-specified input scale factor for
+                        quantization.
 ```
 
 ## Model Preparation

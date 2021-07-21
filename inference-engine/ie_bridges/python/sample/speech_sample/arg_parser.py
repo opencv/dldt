@@ -38,5 +38,7 @@ def parse_args() -> argparse.Namespace:
     args.add_argument('-oname', '--output_layers', type=str,
                       help='Optional. Layer names for output blobs. The names are separated with ",". '
                       'Allows to change the order of output layers for -o flag. Example: Output1:port,Output2:port.')
+    args.add_argument('-sf', '--scale_factor', type=float,
+                      help='Optional. User-specified input scale factor for quantization.')
 
     return parser.parse_args()

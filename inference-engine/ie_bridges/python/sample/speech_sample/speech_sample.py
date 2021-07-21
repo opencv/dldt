@@ -131,15 +131,17 @@ def main():
         plugin_config['GNA_DEVICE_MODE'] = gna_device_mode
         plugin_config['GNA_PRECISION'] = f'I{args.quantization_bits}'
 
-        # Get a GNA scale factor
+        # Set a GNA scale factor
         if args.import_gna_model:
             log.info(f'Using scale factor from the imported GNA model: {args.import_gna_model}')
+        elif args.scale_factor:
+            log.info(f'Using scale factor of {args.scale_factor:.7f} specified by user.')
+            plugin_config['GNA_SCALE_FACTOR'] = str(args.scale_factor)
         else:
             utterances = read_utterance_file(args.input.split(',')[0])
             key = sorted(utterances)[0]
             scale_factor = get_scale_factor(utterances[key])
             log.info(f'Using scale factor of {scale_factor:.7f} calculated from first utterance.')
-
             plugin_config['GNA_SCALE_FACTOR'] = str(scale_factor)
 
         if args.export_embedded_gna_model:

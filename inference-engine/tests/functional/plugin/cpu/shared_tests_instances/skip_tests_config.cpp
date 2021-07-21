@@ -7,6 +7,7 @@
 
 #include <ie_system_conf.h>
 #include "functional_test_utils/skip_tests_config.hpp"
+#include "ie_parallel.hpp"
 
 std::vector<std::string> disabledTestPatterns() {
     std::vector<std::string> retVector{
@@ -73,8 +74,13 @@ std::vector<std::string> disabledTestPatterns() {
         // TODO: 57562 No dynamic output shape support
         R"(.*NonZeroLayerTest.*)",
         // need to implement Export / Import
-        R"(.*IEClassImportExportTestP.*)"
+        R"(.*IEClassImportExportTestP.*)",
     };
+
+#if ((IE_THREAD == IE_THREAD_TBB) || (IE_THREAD == IE_THREAD_TBB_AUTO))
+    retVector.emplace_back(R"(.*ReusableCPUStreamsExecutor.*)");
+#endif
+
 #ifdef __APPLE__
         // TODO: Issue 55717
         //retVector.emplace_back(R"(.*smoke_LPT.*ReduceMinTransformation.*f32.*)");
